@@ -240,32 +240,49 @@ scoreBtn.addEventListener('click', () => {
     '대각↘','대각↙'
   ];
 
-  let roundScore = 0;
-  const highlightSet = new Set();
-  const logLines = [];
-
+  // 모든 수식 수집
+  const allExprs = [];
   lines.forEach((lineIdx, li) => {
-    const exprs = parseExpressions(lineIdx);
-    exprs.forEach(({ score, indices, expr }) => {
-      roundScore += score;
-      indices.forEach(i => highlightSet.add(i));
-      logLines.push(`<span class="log-score">[${lineNames[li]}] ${expr} = ${score}점</span>`);
+    parseExpressions(lineIdx).forEach(({ score, indices, expr }) => {
+      allExprs.push({ score, indices, expr, lineName: lineNames[li] });
     });
   });
 
-  totalScore += roundScore;
-  scoreDisplay.textContent = `점수: ${totalScore}`;
-  renderGrid(highlightSet);
-
-  if (logLines.length === 0) {
-    addLog('<span class="log-zero">이번 턴 득점 없음. (0점)</span>');
-  } else {
-    logLines.forEach(l => addLog(l));
-    addLog(`<strong>이번 턴 합계: ${roundScore}점 → 총점: ${totalScore}점</strong>`);
-  }
-
   scoreBtn.disabled = true;
   drawn = false;
+
+  if (allExprs.length === 0) {
+    renderGrid();
+    addLog('<span class="log-zero">이번 턴 득점 없음. (0점)</span>');
+    finishRound(0);
+    return;
+  }
+
+  let step = 0;
+  let roundScore = 0;
+
+  function showNext() {
+    if (step > 0) renderGrid(); // 이전 하이라이트 제거
+    if (step >= allExprs.length) {
+      finishRound(roundScore);
+      return;
+    }
+    const { score, indices, expr, lineName } = allExprs[step];
+    roundScore += score;
+    renderGrid(new Set(indices));
+    addLog(`<span class="log-score">[${lineName}] ${expr} = ${score}점</span>`);
+    step++;
+    setTimeout(showNext, 700);
+  }
+
+  showNext();
+});
+
+function finishRound(roundScore) {
+  totalScore += roundScore;
+  scoreDisplay.textContent = `점수: ${totalScore}`;
+  if (roundScore > 0)
+    addLog(`<strong>이번 턴 합계: ${roundScore}점 → 총점: ${totalScore}점</strong>`);
 
   // 덱 리셋 (로그라이크: 새 덱으로 다음 라운드)
   if (deck.length < 25) {
@@ -274,7 +291,7 @@ scoreBtn.addEventListener('click', () => {
     drawBtn.disabled = false;
     addLog('덱을 새로 섞었습니다. 다음 라운드 준비!');
   }
-});
+}
 
 function updateDeckInfo() {
   deckInfo.textContent = `덱: ${deck.length}장 남음`;
