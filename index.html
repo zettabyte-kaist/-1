@@ -113,9 +113,10 @@
 // --- 덱 초기화 ---
 function makeInitialDeck() {
   const deck = [];
-  for (let n = 1; n <= 5; n++)
-    for (let i = 0; i < 4; i++) deck.push(n);
-  for (let i = 0; i < 5; i++) deck.push('+');
+  const counts = [6, 5, 4, 3, 2, 1]; // 1~6
+  for (let n = 1; n <= 6; n++)
+    for (let i = 0; i < counts[n-1]; i++) deck.push(n);
+  for (let i = 0; i < 4; i++) deck.push('+');
   return deck;
 }
 
@@ -166,19 +167,60 @@ function renderGrid(highlightSet = new Set()) {
 // --- 줄 인덱스 ---
 function getLines() {
   const lines = [];
+  const lineNames = [];
+
   // 가로
   for (let r = 0; r < 5; r++) {
     lines.push([0,1,2,3,4].map(c => r*5+c));
+    lineNames.push(`가로${r+1}`);
   }
   // 세로
   for (let c = 0; c < 5; c++) {
     lines.push([0,1,2,3,4].map(r => r*5+c));
+    lineNames.push(`세로${c+1}`);
   }
-  // 대각선 (좌상→우하)
-  lines.push([0,6,12,18,24]);
-  // 대각선 (우상→좌하)
-  lines.push([4,8,12,16,20]);
-  return lines;
+  // 대각선 ↘ (길이 2 이상)
+  for (let start = 0; start < 5; start++) {
+    // 위쪽 행에서 시작 (0행, start열)
+    if (start > 0) {
+      const diag = [];
+      for (let k = 0; start+k < 5 && k < 5; k++) diag.push(k*5 + (start+k));
+      if (diag.length >= 2) { lines.push(diag); lineNames.push('대각↘'); }
+    }
+    // 왼쪽 열에서 시작 (start행, 0열)
+    if (start > 0) {
+      const diag = [];
+      for (let k = 0; start+k < 5 && k < 5; k++) diag.push((start+k)*5 + k);
+      if (diag.length >= 2) { lines.push(diag); lineNames.push('대각↘'); }
+    }
+    // 메인 대각선
+    if (start === 0) {
+      const diag = [0,6,12,18,24];
+      lines.push(diag); lineNames.push('대각↘');
+    }
+  }
+  // 대각선 ↙ (길이 2 이상)
+  for (let start = 0; start < 5; start++) {
+    // 위쪽 행에서 시작 (0행, start열), 오른쪽→왼쪽 아래
+    if (start < 4) {
+      const diag = [];
+      for (let k = 0; start-k >= 0 && k < 5; k++) diag.push(k*5 + (start-k));
+      if (diag.length >= 2) { lines.push(diag); lineNames.push('대각↙'); }
+    }
+    // 오른쪽 열에서 시작 (start행, 4열)
+    if (start > 0) {
+      const diag = [];
+      for (let k = 0; start+k < 5 && 4-k >= 0; k++) diag.push((start+k)*5 + (4-k));
+      if (diag.length >= 2) { lines.push(diag); lineNames.push('대각↙'); }
+    }
+    // 메인 대각선
+    if (start === 4) {
+      const diag = [4,8,12,16,20];
+      lines.push(diag); lineNames.push('대각↙');
+    }
+  }
+
+  return { lines, lineNames };
 }
 
 // --- 수식 파싱 ---
@@ -233,12 +275,7 @@ drawBtn.addEventListener('click', () => {
 scoreBtn.addEventListener('click', () => {
   if (!drawn) return;
 
-  const lines = getLines();
-  const lineNames = [
-    '가로1','가로2','가로3','가로4','가로5',
-    '세로1','세로2','세로3','세로4','세로5',
-    '대각↘','대각↙'
-  ];
+  const { lines, lineNames } = getLines();
 
   // 모든 수식 수집
   const allExprs = [];
