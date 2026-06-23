@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elemental Forge — 원소 합성사</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <h1>⚗️ Elemental Forge</h1>
+    <div class="stat-box">
+      <div class="stat">
+        <div class="stat-label">턴</div>
+        <div class="stat-value" id="turn-val">1</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">커트라인</div>
+        <div class="stat-value" id="threshold-val">30pt</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">이번 턴 점수</div>
+        <div class="stat-value danger" id="score-val">0pt</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">연구 포인트</div>
+        <div class="stat-value" id="rp-val">0pt</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Left Panel -->
+    <div id="left-panel">
+
+      <!-- Hand -->
+      <div id="hand-area">
+        <h3>🃏 현재 손패</h3>
+        <div id="hand-cards"></div>
+      </div>
+
+      <!-- Builder -->
+      <div id="builder-area">
+        <h3>🧪 화합물 합성</h3>
+        <div id="selected-preview"></div>
+        <div id="compound-list"></div>
+        <div id="builder-hint">카드를 선택하면 만들 수 있는 화합물이 표시됩니다.</div>
+      </div>
+
+      <!-- Formed compounds this turn -->
+      <div id="formed-area">
+        <h3>✅ 이번 턴 합성된 화합물</h3>
+        <div id="formed-list"></div>
+        <div id="action-bar" style="margin-top:12px"></div>
+      </div>
+
+    </div>
+
+    <!-- Right Panel -->
+    <div id="right-panel">
+
+      <!-- Score -->
+      <div id="score-panel">
+        <h3>📊 득점 현황</h3>
+        <div id="score-lines"></div>
+      </div>
+
+      <!-- Log -->
+      <div id="log-area">
+        <h3>📋 로그</h3>
+        <div id="log-lines"></div>
+      </div>
+
+      <!-- Shop -->
+      <div id="shop-area">
+        <h3>🛒 연구 상점</h3>
+        <p style="font-size:0.75rem;color:#888;margin-bottom:10px">연구 포인트로 새 원소 카드 구매 (덱에 추가)</p>
+        <div id="shop-cards"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- Game Over / Result Overlay -->
+<div id="phase-overlay">
+  <div class="overlay-box">
+    <h2 id="overlay-title">게임 오버</h2>
+    <p id="overlay-msg"></p>
+    <button class="btn-primary" id="overlay-btn">다시 시작</button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
