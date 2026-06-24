@@ -2,6 +2,7 @@
 
 let gs = null;
 let selectedCardIds = [];
+let selectedBoardIds = [];  // compound IDs selected on the board
 
 function init() {
   gs = new GameState();
@@ -14,26 +15,24 @@ function render() {
   renderHand();
   renderBuilder();
   renderFormed();
+  renderBoard();
   renderLog();
   renderScore();
   renderShop();
+  renderSynergyPick();
   renderActions();
 }
 
 function renderHeader() {
   document.getElementById('turn-val').textContent = gs.turn;
-  // Show period progress instead of per-turn threshold
-  const target = gs.getPeriodThreshold();
-  const tv = document.getElementById('threshold-val');
-  tv.textContent = `${gs.periodScore}/${target}pt`;
-  const rv = document.getElementById('rp-val');
-  rv.textContent = gs.researchPoints + 'pt';
+  const target = gs.getRoundThreshold();
+  document.getElementById('threshold-val').textContent = `${gs.roundScore}/${target}pt`;
+  document.getElementById('token-val').textContent = gs.tokens + '🪙';
   const sv = document.getElementById('score-val');
   sv.textContent = gs.turnScore + 'pt';
-  // Color based on whether period is on track
-  const turnsLeft = 5 - gs.periodTurn;
-  const needed = target - gs.periodScore;
-  const onTrack = turnsLeft > 0 ? (needed / turnsLeft <= 80) : gs.periodScore >= target;
+  const turnsLeft = 5 - gs.roundTurn;
+  const needed = target - gs.roundScore;
+  const onTrack = turnsLeft > 0 ? (needed / turnsLeft <= 80) : gs.roundScore >= target;
   sv.className = 'stat-value ' + (onTrack ? 'ok' : 'danger');
 }
 
@@ -51,9 +50,7 @@ function renderHand() {
       <span class="card-name">${el.name}</span>
       <span class="card-num">${el.atomicNum}</span>
     `;
-    if (!isUsed) {
-      div.addEventListener('click', () => toggleCard(card.id));
-    }
+    if (!isUsed) div.addEventListener('click', () => toggleCard(card.id));
     container.appendChild(div);
   }
   if (gs.hand.length === 0 && gs.phase === 'build') {
@@ -64,11 +61,8 @@ function renderHand() {
 function toggleCard(cardId) {
   if (gs.phase !== 'build') return;
   const idx = selectedCardIds.indexOf(cardId);
-  if (idx >= 0) {
-    selectedCardIds.splice(idx, 1);
-  } else {
-    selectedCardIds.push(cardId);
-  }
+  if (idx >= 0) selectedCardIds.splice(idx, 1);
+  else selectedCardIds.push(cardId);
   renderBuilder();
   renderHand();
 }
@@ -78,7 +72,6 @@ function renderBuilder() {
   const compoundList = document.getElementById('compound-list');
   const hint = document.getElementById('builder-hint');
 
-  // Show selected card chips
   preview.innerHTML = '';
   const symCount = {};
   for (const id of selectedCardIds) {
@@ -95,7 +88,6 @@ function renderBuilder() {
     preview.appendChild(chip);
   }
 
-  // Show formable compounds
   compoundList.innerHTML = '';
   if (selectedCardIds.length === 0) {
     hint.textContent = '카드를 선택하면 만들 수 있는 화합물이 표시됩니다.';
@@ -121,12 +113,11 @@ function renderBuilder() {
   for (const c of available) {
     const div = document.createElement('div');
     div.className = 'compound-option';
-    const catLabel = getCatLabel(c.category);
     div.innerHTML = `
       <div class="fi-left">
         <span class="comp-name">${c.name}</span>
         <span class="comp-formula">${c.formula}</span>
-        <span class="comp-category">${catLabel}</span>
+        <span class="comp-category">${getCatLabel(c.category)}</span>
       </div>
       <span class="comp-score">${c.score}pt</span>
     `;
@@ -147,6 +138,7 @@ function formCompound(compoundId) {
   renderHand();
   renderBuilder();
   renderFormed();
+  renderBoard();
   renderActions();
 }
 
@@ -172,15 +164,131 @@ function renderFormed() {
   }
 }
 
+function renderBoard() {
+  const boardList = document.getElementById('board-list');
+  const boardHint = document.getElementById('board-hint');
+  const reactionList = document.getElementById('board-reaction-list');
+
+  boardList.innerHTML = '';
+  reactionList.innerHTML = '';
+
+  if (gs.boardCompounds.length === 0) {
+    boardList.innerHTML = '<span style="color:#555;font-size:0.8rem">보드가 비어있습니다.</span>';
+    boardHint.textContent = '';
+    return;
+  }
+
+  const inInteract = gs.phase === 'interact';
+
+  for (const bc of gs.boardCompounds) {
+    const div = document.createElement('div');
+    const isSelected = selectedBoardIds.includes(bc.compound.id);
+    div.className = 'board-item' + (isSelected ? ' selected' : '') + (inInteract ? ' clickable' : '');
+    div.innerHTML = `
+      <div class="fi-left">
+        <span class="fi-name">${bc.compound.name}</span>
+        <span class="fi-formula">${bc.compound.formula}</span>
+        ${bc.count > 1 ? `<span style="color:#6bff8a;font-size:0.75rem">×${bc.count}</span>` : ''}
+      </div>
+      <span class="fi-score" style="color:#6bff8a">${bc.compound.score}pt</span>
+    `;
+    if (inInteract) {
+      div.addEventListener('click', () => toggleBoardItem(bc.compound.id));
+    }
+    boardList.appendChild(div);
+  }
+
+  if (!inInteract) {
+    boardHint.textContent = '채점 후 반응 단계에서 보드 화합물을 선택할 수 있습니다.';
+    return;
+  }
+
+  if (selectedBoardIds.length === 0) {
+    boardHint.textContent = '반응시킬 화합물 2개를 선택하세요.';
+    return;
+  }
+
+  const validReactions = gs.getValidBoardReactions(selectedBoardIds);
+  if (validReactions.length === 0) {
+    boardHint.textContent = '선택한 조합으로 가능한 반응이 없습니다.';
+    return;
+  }
+
+  boardHint.textContent = '아래 반응 중 하나를 클릭하세요.';
+  for (const r of validReactions) {
+    const div = document.createElement('div');
+    div.className = 'reaction-option';
+    div.innerHTML = `
+      <span>${r.label}</span>
+      <span style="color:#6bff8a">+${TOKEN_REWARDS.boardReaction.perReaction + r.tokenBonus}🪙</span>
+    `;
+    div.addEventListener('click', () => {
+      const result = gs.executeBoardReaction(r.id);
+      if (result.ok) {
+        selectedBoardIds = [];
+        renderHeader();
+        renderBoard();
+        renderLog();
+      }
+    });
+    reactionList.appendChild(div);
+  }
+}
+
+function toggleBoardItem(compoundId) {
+  if (gs.phase !== 'interact') return;
+  const idx = selectedBoardIds.indexOf(compoundId);
+  if (idx >= 0) selectedBoardIds.splice(idx, 1);
+  else selectedBoardIds.push(compoundId);
+  renderBoard();
+}
+
+function renderSynergyPick() {
+  const overlay = document.getElementById('synergy-overlay');
+  if (gs.phase !== 'synergy_pick') {
+    overlay.classList.remove('visible');
+    return;
+  }
+  overlay.classList.add('visible');
+
+  const optionsEl = document.getElementById('synergy-options');
+  optionsEl.innerHTML = '';
+
+  for (const key of gs.synergyPickOptions) {
+    const synergy = SYNERGY_POOL[key];
+    const current = gs.unlockedSynergies[key];
+    const currentLevel = current ? current.level : 0;
+    const isMaxed = currentLevel >= 3;
+
+    const card = document.createElement('div');
+    card.className = 'synergy-card' + (isMaxed ? ' maxed' : '');
+
+    const levelDots = [1, 2, 3].map(l =>
+      `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 2px;background:${l <= currentLevel ? '#7ec8e3' : '#2a2a4a'}"></span>`
+    ).join('');
+
+    card.innerHTML = `
+      <div style="font-size:1.8rem">${synergy.icon}</div>
+      <div style="font-weight:bold;margin:6px 0;font-size:0.9rem">${synergy.name}</div>
+      <div style="margin-bottom:8px">${levelDots}</div>
+      <div style="font-size:0.7rem;color:#aaa;margin-bottom:8px">${synergy.description}</div>
+      <div style="font-size:0.75rem;color:${isMaxed ? '#f0d060' : '#6bff8a'}">
+        ${isMaxed ? '최대 레벨 (선택 시 +5🪙)' : currentLevel === 0 ? '해금 (Lv1)' : `Lv${currentLevel} → Lv${currentLevel + 1}`}
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      gs.pickSynergy(key);
+      render();
+    });
+    optionsEl.appendChild(card);
+  }
+}
+
 function renderLog() {
   const logArea = document.getElementById('log-lines');
   logArea.innerHTML = '';
-  for (const line of gs.log) {
-    addLogLine(line);
-  }
-  for (const line of gs.bonusLines) {
-    addLogLine(line, 'bonus');
-  }
+  for (const line of gs.log) addLogLine(line);
+  for (const line of gs.bonusLines) addLogLine(line, 'bonus');
   logArea.scrollTop = logArea.scrollHeight;
 }
 
@@ -197,7 +305,7 @@ function renderScore() {
   const panel = document.getElementById('score-lines');
   panel.innerHTML = '';
 
-  const target = gs.getPeriodThreshold();
+  const target = gs.getRoundThreshold();
   const addLine = (label, value, cls = '') => {
     const div = document.createElement('div');
     div.className = 'score-line';
@@ -205,29 +313,37 @@ function renderScore() {
     panel.appendChild(div);
   };
 
-  // Period info always visible
-  addLine(`${gs.periodNum}기 목표`, target + 'pt');
-  addLine('구간 누적', gs.periodScore + 'pt', gs.periodScore >= target ? 'pass' : '');
-  addLine('구간 내 턴', `${gs.periodTurn}/5`);
+  addLine(`${gs.roundNum}라운드 목표`, target + 'pt');
+  addLine('라운드 누적', gs.roundScore + 'pt', gs.roundScore >= target ? 'pass' : '');
+  addLine('라운드 내 턴', `${gs.roundTurn}/5`);
 
-  if (gs.phase === 'build') {
+  if (gs.phase === 'build' || gs.phase === 'interact') {
     const base = gs.formedCompounds.reduce((s, fc) => s + fc.compound.score * fc.count, 0);
-    addLine('현재 기본 점수', base + 'pt');
-    addLine('보너스', '채점 후 계산');
-  } else if (['score','shop','nextturn'].includes(gs.phase)) {
+    addLine('이번 턴 기본 점수', base + 'pt');
+  }
+  if (['interact', 'synergy_pick', 'shop'].includes(gs.phase)) {
     addLine('이번 턴 득점', gs.turnScore + 'pt');
-    if (gs.phase === 'shop') {
-      const earned = gs.researchPoints;
-      addLine('보유 연구 포인트', gs.researchPoints + 'pt');
-    }
+    addLine('보유 토큰', gs.tokens + '🪙');
+  }
+
+  // Unlocked synergies
+  const unlockedKeys = Object.keys(gs.unlockedSynergies);
+  if (unlockedKeys.length > 0) {
+    const names = unlockedKeys.map(k => {
+      const lv = gs.unlockedSynergies[k].level;
+      return `${SYNERGY_POOL[k].icon}${SYNERGY_POOL[k].name} Lv${lv}`;
+    }).join(', ');
+    const div = document.createElement('div');
+    div.style.cssText = 'font-size:0.7rem;color:#7ec8e3;padding:4px 0;border-top:1px solid #2a2a4a;margin-top:4px';
+    div.textContent = '해금: ' + names;
+    panel.appendChild(div);
   }
 
   if (gs.interactionsThisTurn.size > 0) {
-    const names = [...gs.interactionsThisTurn].map(i => getInteractionName(i)).join(', ');
     addLine('발동 상호작용', gs.interactionsThisTurn.size + '종');
     const div = document.createElement('div');
     div.style.cssText = 'font-size:0.7rem;color:#7ec8e3;padding:4px 0;';
-    div.textContent = names;
+    div.textContent = [...gs.interactionsThisTurn].map(i => getInteractionName(i)).join(', ');
     panel.appendChild(div);
   }
 }
@@ -251,7 +367,7 @@ function renderShop() {
   for (const item of gs.shopCards) {
     const div = document.createElement('div');
     div.className = 'shop-item';
-    const canAfford = gs.researchPoints >= item.cost;
+    const canAfford = gs.tokens >= item.cost;
     if (!canAfford) div.style.opacity = '0.5';
     div.innerHTML = `
       <div class="fi-left">
@@ -259,7 +375,7 @@ function renderShop() {
         <span class="si-name">${item.element.name}</span>
         <span class="si-num">Z=${item.element.atomicNum} | Grade ${item.element.grade}</span>
       </div>
-      <span class="si-cost">${item.cost}pt</span>
+      <span class="si-cost">${item.cost}🪙</span>
     `;
     if (canAfford) {
       div.addEventListener('click', () => {
@@ -267,6 +383,7 @@ function renderShop() {
         if (result.ok) {
           div.classList.add('bought');
           renderHeader();
+          renderScore();
           renderLog();
         }
       });
@@ -280,43 +397,43 @@ function renderActions() {
   bar.innerHTML = '';
 
   if (gs.phase === 'draw') {
-    const btn = makeBtn('카드 드로우 (8장)', 'btn-primary', () => {
+    bar.appendChild(makeBtn('카드 드로우 (8장)', 'btn-primary', () => {
       gs.drawPhase();
       render();
-    });
-    bar.appendChild(btn);
+    }));
   } else if (gs.phase === 'build') {
     if (selectedCardIds.length > 0) {
-      const btn = makeBtn('선택 해제', 'btn-danger', () => {
+      bar.appendChild(makeBtn('선택 해제', 'btn-danger', () => {
         selectedCardIds = [];
         renderBuilder();
         renderHand();
-      });
-      bar.appendChild(btn);
+      }));
     }
     const endBtn = makeBtn('합성 완료 → 채점', 'btn-success', () => {
       selectedCardIds = [];
       gs.scorePhase();
-      gs.judgePhase();
       render();
     });
     endBtn.disabled = gs.formedCompounds.length === 0;
     bar.appendChild(endBtn);
-  } else if (gs.phase === 'nextturn') {
-    const remaining = 5 - gs.periodTurn;
-    const btn = makeBtn(`다음 턴 (구간 ${remaining}턴 남음)`, 'btn-primary', () => {
-      gs.nextTurn();
-      gs.drawPhase();
+  } else if (gs.phase === 'interact') {
+    if (selectedBoardIds.length > 0) {
+      bar.appendChild(makeBtn('보드 선택 해제', 'btn-danger', () => {
+        selectedBoardIds = [];
+        renderBoard();
+      }));
+    }
+    bar.appendChild(makeBtn('반응 완료 (다음 단계)', 'btn-success', () => {
+      selectedBoardIds = [];
+      gs.judgePhase();
       render();
-    });
-    bar.appendChild(btn);
+    }));
   } else if (gs.phase === 'shop') {
-    const btn = makeBtn('다음 턴으로 (새 구간 시작)', 'btn-warning', () => {
+    bar.appendChild(makeBtn('다음 턴', 'btn-warning', () => {
       gs.nextTurn();
       gs.drawPhase();
       render();
-    });
-    bar.appendChild(btn);
+    }));
   } else if (gs.phase === 'gameover') {
     showGameOver();
   }
@@ -343,8 +460,7 @@ function getInteractionName(key) {
   const map = {
     category_synergy: '분류시너지', neutralization: '중화반응',
     reaction_chain: '반응연계', combustion: '연소반응',
-    catalyst: '촉매', synthesis_route: '산업합성루트',
-    homologous_series: '동족체시너지',
+    catalyst: '촉매', homologous_series: '동족열시너지',
   };
   return map[key] || key;
 }
@@ -352,7 +468,7 @@ function getInteractionName(key) {
 function showGameOver() {
   document.getElementById('overlay-title').textContent = '게임 오버';
   document.getElementById('overlay-msg').innerHTML =
-    `${gs.periodNum}기 ${gs.turn}턴에 탈락했습니다.<br>총 획득한 연구 포인트: ${gs.totalResearchPoints}pt`;
+    `${gs.roundNum}라운드 ${gs.turn}턴에 탈락했습니다.<br>총 획득한 토큰: ${gs.totalTokensEarned}🪙`;
   document.getElementById('overlay-btn').textContent = '다시 시작';
   document.getElementById('overlay-btn').onclick = () => {
     document.getElementById('phase-overlay').classList.remove('visible');
