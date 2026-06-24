@@ -63,3 +63,32 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## 5. 게임 배포 규칙
+
+**사이트**: https://zettabyte-kaist.github.io/-1/
+
+**배포 구조:**
+- GitHub Pages는 `main` 브랜치의 루트 `index.html`을 서빙한다.
+- 게임 파일은 `game/` 디렉토리에서 관리하지만, 사이트는 루트 `index.html`을 읽는다.
+- `game/index.html`에는 `game/data.js`, `game/engine.js`, `game/ui.js`가 인라인으로 포함되어 있다.
+
+**게임 수정 시 필수 절차:**
+
+1. `game/data.js`, `game/engine.js`, `game/ui.js` 중 수정이 필요한 파일 수정
+2. 수정된 내용을 `game/index.html`의 인라인 `<script>` 블록에도 동기화
+3. 루트 `index.html`을 `game/index.html`로 덮어쓰기:
+   ```
+   cp game/index.html index.html
+   ```
+4. 변경된 파일 모두 커밋하고 `main` 브랜치에 푸시:
+   ```
+   git add game/ index.html
+   git commit -m "..."
+   git push origin main
+   ```
+5. GitHub Actions가 자동으로 배포 (약 1~2분 소요). 워크플로우: `.github/workflows/deploy.yml`
+
+**이 절차를 빠뜨리면:** `game/` 파일만 바뀌고 루트 `index.html`이 구버전으로 남아 사이트에 반영되지 않는다.
