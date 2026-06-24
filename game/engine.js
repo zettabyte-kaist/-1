@@ -8,15 +8,19 @@ class GameState {
     this.deck = this.buildInitialDeck();
     this.hand = [];
     this.discard = [];
-    this.formedCompounds = []; // { compound, count } this turn
-    this.usedElementIds = new Set(); // card ids used this turn
+    this.formedCompounds = [];
+    this.usedElementIds = new Set();
     this.turnScore = 0;
     this.log = [];
     this.gameOver = false;
-    this.phase = 'draw'; // draw | build | score | shop | gameover
+    this.phase = 'draw';
     this.shopCards = [];
     this.interactionsThisTurn = new Set();
     this.bonusLines = [];
+    // 5-turn period tracking
+    this.periodScore = 0;   // cumulative score within current period
+    this.periodTurn = 0;    // turns completed in current period (0-4)
+    this.periodNum = 1;     // which period we're in (1-based)
   }
 
   buildInitialDeck() {
@@ -38,13 +42,20 @@ class GameState {
     return t;
   }
 
+  getPeriodThreshold() {
+    const idx = Math.min(this.periodNum - 1, PERIOD_THRESHOLDS.length - 1);
+    if (this.periodNum <= PERIOD_THRESHOLDS.length) return PERIOD_THRESHOLDS[idx];
+    let t = PERIOD_THRESHOLDS[PERIOD_THRESHOLDS.length - 1];
+    for (let i = PERIOD_THRESHOLDS.length; i < this.periodNum; i++) t = Math.round(t * 2.0);
+    return t;
+  }
+
   drawPhase() {
-    // Shuffle discard into deck if needed
-    if (this.deck.length < 6) {
+    if (this.deck.length < 8) {
       this.deck = shuffle([...this.deck, ...this.discard]);
       this.discard = [];
     }
-    this.hand = this.deck.splice(0, 6);
+    this.hand = this.deck.splice(0, 8);
     this.formedCompounds = [];
     this.usedElementIds = new Set();
     this.turnScore = 0;
@@ -202,6 +213,20 @@ class GameState {
       }
     }
 
+    // ── 7-11 Homologous Series Synergy ──
+    for (const series of HOMOLOGOUS_SERIES) {
+      const matches = series.ids.filter(id => allIds.has(id));
+      if (matches.length >= 2) {
+        this.interactionsThisTurn.add('homologous_series');
+        const mult = matches.length >= 3 ? 2 : 1;
+        for (const id of matches) {
+          const b = series.bonus * mult * (compoundMap[id]?.count || 1);
+          if (compoundMap[id]) compoundMap[id].bonusScore += b;
+          this.bonusLines.push(`🧬 동족체 [${series.name}]: ${COMPOUNDS.find(c=>c.id===id)?.name} +${b}pt`);
+        }
+      }
+    }
+
     // ── 7-12 Industrial Synthesis Routes ──
     for (const route of SYNTHESIS_ROUTES) {
       const reqs = route.requires;
@@ -218,6 +243,8 @@ class GameState {
     const comboCount = this.interactionsThisTurn.size;
     const COMBO_MULT = [1.0, 1.0, 1.2, 1.5, 1.8, 2.5];
     const comboMult = COMBO_MULT[Math.min(comboCount, COMBO_MULT.length - 1)];
+    // update interaction display name
+
     if (comboCount >= 2) {
       this.bonusLines.push(`✨ 콤보 배율 (${comboCount}종): ×${comboMult}`);
     }
@@ -247,18 +274,34 @@ class GameState {
   }
 
   judgePhase() {
-    const threshold = this.getThreshold();
-    if (this.turnScore >= threshold) {
-      const earned = this.turnScore - threshold;
-      this.researchPoints += earned;
-      this.totalResearchPoints += earned;
-      this.log.push(`🎉 커트라인 통과! +${earned} 연구 포인트`);
-      this.generateShop();
-      this.phase = 'shop';
+    this.periodScore += this.turnScore;
+    this.periodTurn++;
+
+    const isEndOfPeriod = this.periodTurn === 5;
+
+    if (isEndOfPeriod) {
+      const target = this.getPeriodThreshold();
+      if (this.periodScore >= target) {
+        const earned = this.periodScore - target;
+        this.researchPoints += earned;
+        this.totalResearchPoints += earned;
+        this.log.push(`🎉 ${this.periodNum}기 통과! 누적 ${this.periodScore}pt / 목표 ${target}pt`);
+        this.log.push(`💰 +${earned} 연구 포인트 획득`);
+        this.periodNum++;
+        this.periodScore = 0;
+        this.periodTurn = 0;
+        this.generateShop();
+        this.phase = 'shop';
+      } else {
+        this.log.push(`💀 ${this.periodNum}기 실패. 누적 ${this.periodScore}pt / 목표 ${target}pt`);
+        this.gameOver = true;
+        this.phase = 'gameover';
+      }
     } else {
-      this.log.push(`💀 커트라인 미달. 게임 오버.`);
-      this.gameOver = true;
-      this.phase = 'gameover';
+      const target = this.getPeriodThreshold();
+      const remaining = 5 - this.periodTurn;
+      this.log.push(`📈 이번 턴 ${this.turnScore}pt → 구간 누적 ${this.periodScore}pt (목표 ${target}pt, 남은 턴 ${remaining})`);
+      this.phase = 'nextturn';
     }
   }
 

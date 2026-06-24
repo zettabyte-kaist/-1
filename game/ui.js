@@ -22,14 +22,19 @@ function render() {
 
 function renderHeader() {
   document.getElementById('turn-val').textContent = gs.turn;
-  const threshold = gs.getThreshold();
+  // Show period progress instead of per-turn threshold
+  const target = gs.getPeriodThreshold();
   const tv = document.getElementById('threshold-val');
-  tv.textContent = threshold + 'pt';
+  tv.textContent = `${gs.periodScore}/${target}pt`;
   const rv = document.getElementById('rp-val');
   rv.textContent = gs.researchPoints + 'pt';
   const sv = document.getElementById('score-val');
   sv.textContent = gs.turnScore + 'pt';
-  sv.className = 'stat-value ' + (gs.turnScore >= threshold ? 'ok' : 'danger');
+  // Color based on whether period is on track
+  const turnsLeft = 5 - gs.periodTurn;
+  const needed = target - gs.periodScore;
+  const onTrack = turnsLeft > 0 ? (needed / turnsLeft <= 80) : gs.periodScore >= target;
+  sv.className = 'stat-value ' + (onTrack ? 'ok' : 'danger');
 }
 
 function renderHand() {
@@ -192,7 +197,7 @@ function renderScore() {
   const panel = document.getElementById('score-lines');
   panel.innerHTML = '';
 
-  const threshold = gs.getThreshold();
+  const target = gs.getPeriodThreshold();
   const addLine = (label, value, cls = '') => {
     const div = document.createElement('div');
     div.className = 'score-line';
@@ -200,19 +205,21 @@ function renderScore() {
     panel.appendChild(div);
   };
 
+  // Period info always visible
+  addLine(`${gs.periodNum}기 목표`, target + 'pt');
+  addLine('구간 누적', gs.periodScore + 'pt', gs.periodScore >= target ? 'pass' : '');
+  addLine('구간 내 턴', `${gs.periodTurn}/5`);
+
   if (gs.phase === 'build') {
     const base = gs.formedCompounds.reduce((s, fc) => s + fc.compound.score * fc.count, 0);
     addLine('현재 기본 점수', base + 'pt');
-    addLine('커트라인', threshold + 'pt');
     addLine('보너스', '채점 후 계산');
-  } else if (gs.phase === 'score' || gs.phase === 'shop') {
-    addLine('이번 턴 득점', gs.turnScore + 'pt',
-      gs.turnScore >= threshold ? 'pass' : 'fail');
-    addLine('커트라인', threshold + 'pt');
-    const diff = gs.turnScore - threshold;
-    addLine('획득 연구 포인트', (diff > 0 ? '+' + diff : diff) + 'pt',
-      diff >= 0 ? 'pass' : 'fail');
-    addLine('보유 연구 포인트', gs.researchPoints + 'pt');
+  } else if (['score','shop','nextturn'].includes(gs.phase)) {
+    addLine('이번 턴 득점', gs.turnScore + 'pt');
+    if (gs.phase === 'shop') {
+      const earned = gs.researchPoints;
+      addLine('보유 연구 포인트', gs.researchPoints + 'pt');
+    }
   }
 
   if (gs.interactionsThisTurn.size > 0) {
@@ -273,7 +280,7 @@ function renderActions() {
   bar.innerHTML = '';
 
   if (gs.phase === 'draw') {
-    const btn = makeBtn('카드 드로우 (6장)', 'btn-primary', () => {
+    const btn = makeBtn('카드 드로우 (8장)', 'btn-primary', () => {
       gs.drawPhase();
       render();
     });
@@ -295,8 +302,16 @@ function renderActions() {
     });
     endBtn.disabled = gs.formedCompounds.length === 0;
     bar.appendChild(endBtn);
+  } else if (gs.phase === 'nextturn') {
+    const remaining = 5 - gs.periodTurn;
+    const btn = makeBtn(`다음 턴 (구간 ${remaining}턴 남음)`, 'btn-primary', () => {
+      gs.nextTurn();
+      gs.drawPhase();
+      render();
+    });
+    bar.appendChild(btn);
   } else if (gs.phase === 'shop') {
-    const btn = makeBtn('다음 턴으로', 'btn-primary', () => {
+    const btn = makeBtn('다음 턴으로 (새 구간 시작)', 'btn-warning', () => {
       gs.nextTurn();
       gs.drawPhase();
       render();
@@ -315,21 +330,6 @@ function makeBtn(label, cls, onClick) {
   return btn;
 }
 
-function showGameOver() {
-  document.getElementById('overlay-title').textContent = '게임 오버';
-  document.getElementById('overlay-msg').innerHTML =
-    `${gs.turn}턴에 탈락했습니다.<br>총 획득한 연구 포인트: ${gs.totalResearchPoints}pt`;
-  document.getElementById('overlay-btn').textContent = '다시 시작';
-  document.getElementById('overlay-btn').onclick = () => {
-    document.getElementById('phase-overlay').classList.remove('visible');
-    init();
-  };
-  const box = document.querySelector('.overlay-box');
-  box.classList.add('gameover');
-  box.classList.remove('success');
-  document.getElementById('phase-overlay').classList.add('visible');
-}
-
 function getCatLabel(cat) {
   const map = {
     oxide: '산화물', acid: '산', base: '염기', salt: '염',
@@ -344,8 +344,24 @@ function getInteractionName(key) {
     category_synergy: '분류시너지', neutralization: '중화반응',
     reaction_chain: '반응연계', combustion: '연소반응',
     catalyst: '촉매', synthesis_route: '산업합성루트',
+    homologous_series: '동족체시너지',
   };
   return map[key] || key;
+}
+
+function showGameOver() {
+  document.getElementById('overlay-title').textContent = '게임 오버';
+  document.getElementById('overlay-msg').innerHTML =
+    `${gs.periodNum}기 ${gs.turn}턴에 탈락했습니다.<br>총 획득한 연구 포인트: ${gs.totalResearchPoints}pt`;
+  document.getElementById('overlay-btn').textContent = '다시 시작';
+  document.getElementById('overlay-btn').onclick = () => {
+    document.getElementById('phase-overlay').classList.remove('visible');
+    init();
+  };
+  const box = document.querySelector('.overlay-box');
+  box.classList.add('gameover');
+  box.classList.remove('success');
+  document.getElementById('phase-overlay').classList.add('visible');
 }
 
 window.addEventListener('DOMContentLoaded', init);

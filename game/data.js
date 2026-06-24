@@ -132,12 +132,18 @@ const COMPOUNDS = [
 
 // Reaction chain: if both A and B are formed this turn, product C is auto-synthesized at 0.5x score
 const REACTION_CHAINS = [
-  { reactants: ['CO2', 'H2O'],   product: 'H2CO3', label: 'CO₂+H₂O→H₂CO₃' },
-  { reactants: ['NH3', 'HCl'],   product: 'NH4Cl', label: 'NH₃+HCl→NH₄Cl' },
-  { reactants: ['SO3', 'H2O'],   product: 'H2SO4', label: 'SO₃+H₂O→H₂SO₄' },
-  { reactants: ['CaO', 'H2O'],   product: 'CaOH2', label: 'CaO+H₂O→Ca(OH)₂' },
-  { reactants: ['NO', 'CO2'],    product: 'NO2',   label: 'NO+CO₂→NO₂(산화)' },
-  { reactants: ['SO2', 'H2O'],   product: 'H2CO3', label: 'SO₂+H₂O→H₂SO₃(간소화)' },
+  // Grade 1 (H/C/O only)
+  { reactants: ['CO2', 'H2O'],    product: 'H2CO3',  label: 'CO₂+H₂O→H₂CO₃' },
+  { reactants: ['CO', 'H2O'],     product: 'CO2',    label: 'CO+H₂O→CO₂(수성가스)' },
+  { reactants: ['CH3CHO', 'H2O'], product: 'CH3COOH',label: 'CH₃CHO+H₂O→CH₃COOH' },
+  { reactants: ['C2H4', 'H2O'],   product: 'C2H5OH', label: 'C₂H₄+H₂O→C₂H₅OH(수화)' },
+  { reactants: ['HCHO', 'H2O'],   product: 'CH3OH',  label: 'HCHO+H₂O→CH₃OH(환원)' },
+  // Grade 2+
+  { reactants: ['NH3', 'HCl'],    product: 'NH4Cl',  label: 'NH₃+HCl→NH₄Cl' },
+  { reactants: ['SO3', 'H2O'],    product: 'H2SO4',  label: 'SO₃+H₂O→H₂SO₄' },
+  { reactants: ['CaO', 'H2O'],    product: 'CaOH2',  label: 'CaO+H₂O→Ca(OH)₂' },
+  { reactants: ['NO', 'CO2'],     product: 'NO2',    label: 'NO+CO₂→NO₂(산화)' },
+  { reactants: ['SO2', 'H2O'],    product: 'H2CO3',  label: 'SO₂+H₂O→H₂SO₃' },
 ];
 
 // Neutralization pairs: acid+base → salt+water
@@ -176,8 +182,22 @@ const SYNTHESIS_ROUTES = [
   { name: '석회 제조',   requires: ['CaCO3','CaO','CaOH2'], bonus: 40 },
 ];
 
-// Threshold schedule
+// Per-turn thresholds (kept for reference / display only)
 const THRESHOLDS = [30, 55, 85, 125, 175, 240];
+
+// 5-turn period thresholds (cumulative score required per period)
+// Period 1: turns 1-5, Period 2: turns 6-10, etc.
+const PERIOD_THRESHOLDS = [100, 280, 560, 1100, 2000];
+// After period 5, each next period threshold = previous × 2.0
 
 // Shop costs by grade
 const SHOP_COSTS = { 1: 0, 2: 20, 3: 45, 4: 85, 5: 150 };
+
+// Homologous series definitions for 7-11 synergy
+const HOMOLOGOUS_SERIES = [
+  { name: '알케인', ids: ['CH4','C2H6','C3H8'],        bonus: 10 },
+  { name: '알켄',   ids: ['C2H4','C2H2'],              bonus: 10 },
+  { name: '알코올', ids: ['CH3OH','C2H5OH'],           bonus: 12 },
+  { name: '유기산', ids: ['HCOOH','CH3COOH'],          bonus: 12 },
+  { name: '알데하이드', ids: ['HCHO','CH3CHO'],        bonus: 10 },
+];

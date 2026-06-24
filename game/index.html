@@ -378,8 +378,8 @@ button:disabled { opacity: 0.4; cursor: default; }
         <div class="stat-value" id="turn-val">1</div>
       </div>
       <div class="stat">
-        <div class="stat-label">커트라인</div>
-        <div class="stat-value" id="threshold-val">30pt</div>
+        <div class="stat-label">구간 누적/목표</div>
+        <div class="stat-value" id="threshold-val">0/100pt</div>
       </div>
       <div class="stat">
         <div class="stat-label">이번 턴 점수</div>
@@ -568,12 +568,18 @@ const COMPOUNDS = [
 
 // Reaction chain: if both A and B are formed this turn, product C is auto-synthesized at 0.5x score
 const REACTION_CHAINS = [
-  { reactants: ['CO2', 'H2O'],   product: 'H2CO3', label: 'CO₂+H₂O→H₂CO₃' },
-  { reactants: ['NH3', 'HCl'],   product: 'NH4Cl', label: 'NH₃+HCl→NH₄Cl' },
-  { reactants: ['SO3', 'H2O'],   product: 'H2SO4', label: 'SO₃+H₂O→H₂SO₄' },
-  { reactants: ['CaO', 'H2O'],   product: 'CaOH2', label: 'CaO+H₂O→Ca(OH)₂' },
-  { reactants: ['NO', 'CO2'],    product: 'NO2',   label: 'NO+CO₂→NO₂(산화)' },
-  { reactants: ['SO2', 'H2O'],   product: 'H2CO3', label: 'SO₂+H₂O→H₂SO₃(간소화)' },
+  // Grade 1 (H/C/O only)
+  { reactants: ['CO2', 'H2O'],    product: 'H2CO3',  label: 'CO₂+H₂O→H₂CO₃' },
+  { reactants: ['CO', 'H2O'],     product: 'CO2',    label: 'CO+H₂O→CO₂(수성가스)' },
+  { reactants: ['CH3CHO', 'H2O'], product: 'CH3COOH',label: 'CH₃CHO+H₂O→CH₃COOH' },
+  { reactants: ['C2H4', 'H2O'],   product: 'C2H5OH', label: 'C₂H₄+H₂O→C₂H₅OH(수화)' },
+  { reactants: ['HCHO', 'H2O'],   product: 'CH3OH',  label: 'HCHO+H₂O→CH₃OH(환원)' },
+  // Grade 2+
+  { reactants: ['NH3', 'HCl'],    product: 'NH4Cl',  label: 'NH₃+HCl→NH₄Cl' },
+  { reactants: ['SO3', 'H2O'],    product: 'H2SO4',  label: 'SO₃+H₂O→H₂SO₄' },
+  { reactants: ['CaO', 'H2O'],    product: 'CaOH2',  label: 'CaO+H₂O→Ca(OH)₂' },
+  { reactants: ['NO', 'CO2'],     product: 'NO2',    label: 'NO+CO₂→NO₂(산화)' },
+  { reactants: ['SO2', 'H2O'],    product: 'H2CO3',  label: 'SO₂+H₂O→H₂SO₃' },
 ];
 
 // Neutralization pairs: acid+base → salt+water
@@ -612,11 +618,25 @@ const SYNTHESIS_ROUTES = [
   { name: '석회 제조',   requires: ['CaCO3','CaO','CaOH2'], bonus: 40 },
 ];
 
-// Threshold schedule
+// Per-turn thresholds (kept for reference / display only)
 const THRESHOLDS = [30, 55, 85, 125, 175, 240];
+
+// 5-turn period thresholds (cumulative score required per period)
+// Period 1: turns 1-5, Period 2: turns 6-10, etc.
+const PERIOD_THRESHOLDS = [100, 280, 560, 1100, 2000];
+// After period 5, each next period threshold = previous × 2.0
 
 // Shop costs by grade
 const SHOP_COSTS = { 1: 0, 2: 20, 3: 45, 4: 85, 5: 150 };
+
+// Homologous series definitions for 7-11 synergy
+const HOMOLOGOUS_SERIES = [
+  { name: '알케인', ids: ['CH4','C2H6','C3H8'],        bonus: 10 },
+  { name: '알켄',   ids: ['C2H4','C2H2'],              bonus: 10 },
+  { name: '알코올', ids: ['CH3OH','C2H5OH'],           bonus: 12 },
+  { name: '유기산', ids: ['HCOOH','CH3COOH'],          bonus: 12 },
+  { name: '알데하이드', ids: ['HCHO','CH3CHO'],        bonus: 10 },
+];
 // Game Engine
 
 class GameState {
@@ -627,15 +647,19 @@ class GameState {
     this.deck = this.buildInitialDeck();
     this.hand = [];
     this.discard = [];
-    this.formedCompounds = []; // { compound, count } this turn
-    this.usedElementIds = new Set(); // card ids used this turn
+    this.formedCompounds = [];
+    this.usedElementIds = new Set();
     this.turnScore = 0;
     this.log = [];
     this.gameOver = false;
-    this.phase = 'draw'; // draw | build | score | shop | gameover
+    this.phase = 'draw';
     this.shopCards = [];
     this.interactionsThisTurn = new Set();
     this.bonusLines = [];
+    // 5-turn period tracking
+    this.periodScore = 0;   // cumulative score within current period
+    this.periodTurn = 0;    // turns completed in current period (0-4)
+    this.periodNum = 1;     // which period we're in (1-based)
   }
 
   buildInitialDeck() {
@@ -657,13 +681,20 @@ class GameState {
     return t;
   }
 
+  getPeriodThreshold() {
+    const idx = Math.min(this.periodNum - 1, PERIOD_THRESHOLDS.length - 1);
+    if (this.periodNum <= PERIOD_THRESHOLDS.length) return PERIOD_THRESHOLDS[idx];
+    let t = PERIOD_THRESHOLDS[PERIOD_THRESHOLDS.length - 1];
+    for (let i = PERIOD_THRESHOLDS.length; i < this.periodNum; i++) t = Math.round(t * 2.0);
+    return t;
+  }
+
   drawPhase() {
-    // Shuffle discard into deck if needed
-    if (this.deck.length < 6) {
+    if (this.deck.length < 8) {
       this.deck = shuffle([...this.deck, ...this.discard]);
       this.discard = [];
     }
-    this.hand = this.deck.splice(0, 6);
+    this.hand = this.deck.splice(0, 8);
     this.formedCompounds = [];
     this.usedElementIds = new Set();
     this.turnScore = 0;
@@ -821,6 +852,20 @@ class GameState {
       }
     }
 
+    // ── 7-11 Homologous Series Synergy ──
+    for (const series of HOMOLOGOUS_SERIES) {
+      const matches = series.ids.filter(id => allIds.has(id));
+      if (matches.length >= 2) {
+        this.interactionsThisTurn.add('homologous_series');
+        const mult = matches.length >= 3 ? 2 : 1;
+        for (const id of matches) {
+          const b = series.bonus * mult * (compoundMap[id]?.count || 1);
+          if (compoundMap[id]) compoundMap[id].bonusScore += b;
+          this.bonusLines.push(`🧬 동족체 [${series.name}]: ${COMPOUNDS.find(c=>c.id===id)?.name} +${b}pt`);
+        }
+      }
+    }
+
     // ── 7-12 Industrial Synthesis Routes ──
     for (const route of SYNTHESIS_ROUTES) {
       const reqs = route.requires;
@@ -837,6 +882,8 @@ class GameState {
     const comboCount = this.interactionsThisTurn.size;
     const COMBO_MULT = [1.0, 1.0, 1.2, 1.5, 1.8, 2.5];
     const comboMult = COMBO_MULT[Math.min(comboCount, COMBO_MULT.length - 1)];
+    // update interaction display name
+
     if (comboCount >= 2) {
       this.bonusLines.push(`✨ 콤보 배율 (${comboCount}종): ×${comboMult}`);
     }
@@ -866,18 +913,34 @@ class GameState {
   }
 
   judgePhase() {
-    const threshold = this.getThreshold();
-    if (this.turnScore >= threshold) {
-      const earned = this.turnScore - threshold;
-      this.researchPoints += earned;
-      this.totalResearchPoints += earned;
-      this.log.push(`🎉 커트라인 통과! +${earned} 연구 포인트`);
-      this.generateShop();
-      this.phase = 'shop';
+    this.periodScore += this.turnScore;
+    this.periodTurn++;
+
+    const isEndOfPeriod = this.periodTurn === 5;
+
+    if (isEndOfPeriod) {
+      const target = this.getPeriodThreshold();
+      if (this.periodScore >= target) {
+        const earned = this.periodScore - target;
+        this.researchPoints += earned;
+        this.totalResearchPoints += earned;
+        this.log.push(`🎉 ${this.periodNum}기 통과! 누적 ${this.periodScore}pt / 목표 ${target}pt`);
+        this.log.push(`💰 +${earned} 연구 포인트 획득`);
+        this.periodNum++;
+        this.periodScore = 0;
+        this.periodTurn = 0;
+        this.generateShop();
+        this.phase = 'shop';
+      } else {
+        this.log.push(`💀 ${this.periodNum}기 실패. 누적 ${this.periodScore}pt / 목표 ${target}pt`);
+        this.gameOver = true;
+        this.phase = 'gameover';
+      }
     } else {
-      this.log.push(`💀 커트라인 미달. 게임 오버.`);
-      this.gameOver = true;
-      this.phase = 'gameover';
+      const target = this.getPeriodThreshold();
+      const remaining = 5 - this.periodTurn;
+      this.log.push(`📈 이번 턴 ${this.turnScore}pt → 구간 누적 ${this.periodScore}pt (목표 ${target}pt, 남은 턴 ${remaining})`);
+      this.phase = 'nextturn';
     }
   }
 
@@ -960,14 +1023,19 @@ function render() {
 
 function renderHeader() {
   document.getElementById('turn-val').textContent = gs.turn;
-  const threshold = gs.getThreshold();
+  // Show period progress instead of per-turn threshold
+  const target = gs.getPeriodThreshold();
   const tv = document.getElementById('threshold-val');
-  tv.textContent = threshold + 'pt';
+  tv.textContent = `${gs.periodScore}/${target}pt`;
   const rv = document.getElementById('rp-val');
   rv.textContent = gs.researchPoints + 'pt';
   const sv = document.getElementById('score-val');
   sv.textContent = gs.turnScore + 'pt';
-  sv.className = 'stat-value ' + (gs.turnScore >= threshold ? 'ok' : 'danger');
+  // Color based on whether period is on track
+  const turnsLeft = 5 - gs.periodTurn;
+  const needed = target - gs.periodScore;
+  const onTrack = turnsLeft > 0 ? (needed / turnsLeft <= 80) : gs.periodScore >= target;
+  sv.className = 'stat-value ' + (onTrack ? 'ok' : 'danger');
 }
 
 function renderHand() {
@@ -1130,7 +1198,7 @@ function renderScore() {
   const panel = document.getElementById('score-lines');
   panel.innerHTML = '';
 
-  const threshold = gs.getThreshold();
+  const target = gs.getPeriodThreshold();
   const addLine = (label, value, cls = '') => {
     const div = document.createElement('div');
     div.className = 'score-line';
@@ -1138,19 +1206,21 @@ function renderScore() {
     panel.appendChild(div);
   };
 
+  // Period info always visible
+  addLine(`${gs.periodNum}기 목표`, target + 'pt');
+  addLine('구간 누적', gs.periodScore + 'pt', gs.periodScore >= target ? 'pass' : '');
+  addLine('구간 내 턴', `${gs.periodTurn}/5`);
+
   if (gs.phase === 'build') {
     const base = gs.formedCompounds.reduce((s, fc) => s + fc.compound.score * fc.count, 0);
     addLine('현재 기본 점수', base + 'pt');
-    addLine('커트라인', threshold + 'pt');
     addLine('보너스', '채점 후 계산');
-  } else if (gs.phase === 'score' || gs.phase === 'shop') {
-    addLine('이번 턴 득점', gs.turnScore + 'pt',
-      gs.turnScore >= threshold ? 'pass' : 'fail');
-    addLine('커트라인', threshold + 'pt');
-    const diff = gs.turnScore - threshold;
-    addLine('획득 연구 포인트', (diff > 0 ? '+' + diff : diff) + 'pt',
-      diff >= 0 ? 'pass' : 'fail');
-    addLine('보유 연구 포인트', gs.researchPoints + 'pt');
+  } else if (['score','shop','nextturn'].includes(gs.phase)) {
+    addLine('이번 턴 득점', gs.turnScore + 'pt');
+    if (gs.phase === 'shop') {
+      const earned = gs.researchPoints;
+      addLine('보유 연구 포인트', gs.researchPoints + 'pt');
+    }
   }
 
   if (gs.interactionsThisTurn.size > 0) {
@@ -1211,7 +1281,7 @@ function renderActions() {
   bar.innerHTML = '';
 
   if (gs.phase === 'draw') {
-    const btn = makeBtn('카드 드로우 (6장)', 'btn-primary', () => {
+    const btn = makeBtn('카드 드로우 (8장)', 'btn-primary', () => {
       gs.drawPhase();
       render();
     });
@@ -1233,8 +1303,16 @@ function renderActions() {
     });
     endBtn.disabled = gs.formedCompounds.length === 0;
     bar.appendChild(endBtn);
+  } else if (gs.phase === 'nextturn') {
+    const remaining = 5 - gs.periodTurn;
+    const btn = makeBtn(`다음 턴 (구간 ${remaining}턴 남음)`, 'btn-primary', () => {
+      gs.nextTurn();
+      gs.drawPhase();
+      render();
+    });
+    bar.appendChild(btn);
   } else if (gs.phase === 'shop') {
-    const btn = makeBtn('다음 턴으로', 'btn-primary', () => {
+    const btn = makeBtn('다음 턴으로 (새 구간 시작)', 'btn-warning', () => {
       gs.nextTurn();
       gs.drawPhase();
       render();
@@ -1253,21 +1331,6 @@ function makeBtn(label, cls, onClick) {
   return btn;
 }
 
-function showGameOver() {
-  document.getElementById('overlay-title').textContent = '게임 오버';
-  document.getElementById('overlay-msg').innerHTML =
-    `${gs.turn}턴에 탈락했습니다.<br>총 획득한 연구 포인트: ${gs.totalResearchPoints}pt`;
-  document.getElementById('overlay-btn').textContent = '다시 시작';
-  document.getElementById('overlay-btn').onclick = () => {
-    document.getElementById('phase-overlay').classList.remove('visible');
-    init();
-  };
-  const box = document.querySelector('.overlay-box');
-  box.classList.add('gameover');
-  box.classList.remove('success');
-  document.getElementById('phase-overlay').classList.add('visible');
-}
-
 function getCatLabel(cat) {
   const map = {
     oxide: '산화물', acid: '산', base: '염기', salt: '염',
@@ -1282,8 +1345,24 @@ function getInteractionName(key) {
     category_synergy: '분류시너지', neutralization: '중화반응',
     reaction_chain: '반응연계', combustion: '연소반응',
     catalyst: '촉매', synthesis_route: '산업합성루트',
+    homologous_series: '동족체시너지',
   };
   return map[key] || key;
+}
+
+function showGameOver() {
+  document.getElementById('overlay-title').textContent = '게임 오버';
+  document.getElementById('overlay-msg').innerHTML =
+    `${gs.periodNum}기 ${gs.turn}턴에 탈락했습니다.<br>총 획득한 연구 포인트: ${gs.totalResearchPoints}pt`;
+  document.getElementById('overlay-btn').textContent = '다시 시작';
+  document.getElementById('overlay-btn').onclick = () => {
+    document.getElementById('phase-overlay').classList.remove('visible');
+    init();
+  };
+  const box = document.querySelector('.overlay-box');
+  box.classList.add('gameover');
+  box.classList.remove('success');
+  document.getElementById('phase-overlay').classList.add('visible');
 }
 
 window.addEventListener('DOMContentLoaded', init);
