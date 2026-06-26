@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>넘버트로 (NUMBERTRO)</title>
+<style>
+:root {
+  --bg:      #f1f3f5;
+  --bg1:     #ffffff;
+  --bg2:     #f8f9fa;
+  --bd1:     #212529;
+  --bd2:     #ced4da;
+  --bd3:     #dee2e6;
+  --tx1:     #212529;
+  --tx2:     #495057;
+  --tx3:     #868e96;
+  --blue:    #378ADD;
+  --green:   #1D9E75;
+  --red:     #E24B4A;
+  --orange:  #BA7517;
+  --purple:  #6D28D9;
+  --r:       6px;
+  --rl:      12px;
+}
+body.dark {
+  --bg:  #11111b;
+  --bg1: #1e1e2e;
+  --bg2: #252538;
+  --bd1: #cdd6f4;
+  --bd2: #45475a;
+  --bd3: #313244;
+  --tx1: #cdd6f4;
+  --tx2: #a6adc8;
+  --tx3: #6c7086;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+#app {
+  width: 100%;
+  max-width: 480px;
+  padding: 12px 12px 80px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Cards ── */
+.card {
+  width: 60px; height: 88px;
+  border-radius: var(--rl);
+  border: 0.5px solid var(--bd2);
+  background: var(--bg1);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer; user-select: none;
+  position: relative; flex-shrink: 0;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.card:hover { border-color: var(--bd1); }
+.card.selected { border: 2px solid var(--blue); transform: translateY(-7px); }
+.card-val { font-size: 26px; font-weight: 600; color: var(--tx1); line-height: 1; }
+.card-grade-tag {
+  position: absolute; top: 5px; right: 5px;
+  font-size: 7px; font-weight: 700; color: var(--tx3);
+}
+.slot-badge {
+  position: absolute; top: 5px; left: 5px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+/* grade tints */
+.card.rare  { background: #FAEEDA; border-color: #EF9F27; }
+.card.rare  .card-val { color: #854F0B; }
+.card.rare  .card-grade-tag { color: #BA7517; }
+.card.hero  { background: #EDE9FE; border-color: #8B5CF6; }
+.card.hero  .card-val { color: #6D28D9; }
+.card.hero  .card-grade-tag { color: #6D28D9; }
+.card.legend { background: #ECFEFF; border-color: #22D3EE; }
+.card.legend .card-val { color: #0891B2; }
+body.dark .card         { background: var(--bg1); }
+body.dark .card.rare    { background: #2e200a; border-color: #9a6e1a; }
+body.dark .card.rare    .card-val { color: #d4a843; }
+body.dark .card.hero    { background: #1e1535; border-color: #6d43c5; }
+body.dark .card.hero    .card-val { color: #a87de8; }
+body.dark .card.legend  { background: #042F45; border-color: #0891B2; }
+body.dark .card.legend  .card-val { color: #22D3EE; }
+
+/* ── Formula area ── */
+.formula-area {
+  background: var(--bg1);
+  border: 0.5px solid var(--bd3);
+  border-radius: var(--rl);
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 5px;
+  min-height: 92px; flex-wrap: nowrap; overflow: hidden;
+}
+.formula-slot {
+  width: 52px; height: 72px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--bd2);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 600;
+  color: var(--tx1);
+  cursor: pointer; flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.12s, background 0.12s;
+}
+.formula-slot .slot-num {
+  font-size: 9px; color: var(--tx3); font-weight: 400;
+  position: absolute; bottom: 5px;
+}
+.formula-slot.filled { border-style: solid; border-color: var(--bd2); }
+.formula-slot.filled:hover { border-color: var(--red); }
+.formula-slot.filled.rare  { background: #FAEEDA; border-color: #EF9F27; color: #854F0B; }
+.formula-slot.filled.hero  { background: #EDE9FE; border-color: #8B5CF6; color: #6D28D9; }
+.formula-slot.filled.legend { background: #ECFEFF; border-color: #22D3EE; color: #0891B2; }
+body.dark .formula-slot.filled.rare   { background: #2e200a; border-color: #9a6e1a; color: #d4a843; }
+body.dark .formula-slot.filled.hero   { background: #1e1535; border-color: #6d43c5; color: #a87de8; }
+body.dark .formula-slot.filled.legend { background: #042F45; border-color: #0891B2; color: #22D3EE; }
+.formula-op {
+  font-size: 18px; font-weight: 500; color: var(--blue);
+  min-width: 16px; text-align: center; flex-shrink: 0;
+}
+.formula-result-wrap { margin-left: auto; text-align: right; flex-shrink: 0; padding-left: 6px; }
+.formula-result-label { font-size: 10px; color: var(--tx3); }
+.formula-result-val { font-size: 28px; font-weight: 800; color: var(--tx1); line-height: 1.1; }
+
+/* ── Panel ── */
+.panel {
+  background: var(--bg1);
+  border: 0.5px solid var(--bd3);
+  border-radius: var(--rl);
+  padding: 10px 12px;
+}
+.panel-label {
+  font-size: 11px; color: var(--tx3);
+  margin-bottom: 9px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cards-row {
+  display: flex; gap: 7px;
+  overflow-x: auto; padding-bottom: 4px;
+}
+.cards-row::-webkit-scrollbar { height: 4px; }
+.cards-row::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 2px; }
+
+/* ── Block chips ── */
+.blocks-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.block-chip {
+  width: 46px; height: 46px;
+  border-radius: var(--r);
+  border: 0.5px solid var(--blue);
+  background: #EBF4FF;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 600; color: var(--blue);
+  user-select: none;
+}
+body.dark .block-chip { background: #0d2340; border-color: #2A72B7; }
+
+/* ── Status bar ── */
+.status-bar {
+  background: var(--bg2);
+  border: 0.5px solid var(--bd3);
+  border-radius: var(--rl);
+  padding: 10px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.status-item { text-align: center; flex: 1; }
+.status-label { font-size: 10px; color: var(--tx3); }
+.status-val   { font-size: 17px; font-weight: 700; color: var(--tx1); }
+.status-val.danger { color: var(--red); }
+.status-val.pass   { color: var(--green); }
+.status-divider { width: 0.5px; height: 30px; background: var(--bd3); flex-shrink: 0; }
+
+/* ── Phase badges ── */
+.phase-row { display: flex; gap: 6px; }
+.phase-badge {
+  flex: 1; padding: 8px 6px;
+  border-radius: var(--r);
+  border: 0.5px solid var(--bd3);
+  background: var(--bg2);
+  text-align: center; font-size: 11px; color: var(--tx3);
+}
+.phase-badge.active { border-color: var(--blue); background: #EBF4FF; color: var(--blue); font-weight: 600; }
+.phase-badge.done   { color: var(--tx2); }
+.phase-badge .ph-score { display: block; font-size: 17px; font-weight: 700; color: var(--tx1); margin-top: 3px; }
+.phase-badge.active .ph-score { color: var(--blue); }
+body.dark .phase-badge.active { background: #0d2340; }
+body.dark .phase-badge .ph-score { color: var(--tx1); }
+
+/* ── Buttons ── */
+.btn {
+  padding: 10px 16px;
+  border-radius: var(--r);
+  border: 0.5px solid var(--bd2);
+  background: var(--bg1);
+  font-size: 14px; font-weight: 500; color: var(--tx1);
+  cursor: pointer; transition: background 0.1s;
+}
+.btn:hover   { background: var(--bg2); }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn.primary { background: var(--blue); color: #fff; border: none; }
+.btn.primary:hover { background: #2A72B7; }
+.btn.full    { width: 100%; text-align: center; font-size: 15px; padding: 12px; }
+
+/* ── Overlays ── */
+.overlay-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 200;
+  display: none; align-items: center; justify-content: center; padding: 16px;
+}
+.overlay-backdrop.open { display: flex; }
+.overlay-box {
+  background: var(--bg1);
+  border: 0.5px solid var(--bd3); border-radius: var(--rl);
+  padding: 20px; width: 100%; max-width: 440px;
+  display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+}
+body.dark .overlay-box { box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+.overlay-title { font-size: 18px; font-weight: 600; color: var(--tx1); }
+.overlay-sub   { font-size: 13px; color: var(--tx2); line-height: 1.6; }
+
+/* ── Result overlay ── */
+.result-score {
+  font-size: 52px; font-weight: 800; text-align: center; line-height: 1;
+}
+.result-score.pass { color: var(--green); }
+.result-score.fail { color: var(--red); }
+.result-detail { display: flex; justify-content: space-around; gap: 4px; }
+.result-detail-item { text-align: center; font-size: 11px; color: var(--tx3); }
+.result-detail-val { display: block; font-size: 16px; font-weight: 700; color: var(--tx1); margin-top: 2px; }
+
+/* ── Gold badge ── */
+.gold-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 99px;
+  background: #FAEEDA; border: 0.5px solid #EF9F27;
+  color: #B8860B; font-size: 13px; font-weight: 600;
+}
+body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a843; }
+
+/* ── Shop ── */
+.shop-item-row { display: flex; gap: 8px; }
+.shop-item {
+  flex: 1; border: 0.5px solid var(--bd2); border-radius: var(--rl);
+  background: var(--bg2); padding: 12px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; transition: border-color 0.12s, opacity 0.15s;
+}
+.shop-item:hover { border-color: var(--blue); }
+.shop-item.sold { opacity: 0.35; pointer-events: none; }
+.shop-item.cant { opacity: 0.5; cursor: not-allowed; }
+.shop-item.cant:hover { border-color: var(--bd2); }
+.shop-item.rare   { background: #FAEEDA; border-color: #EF9F27; }
+.shop-item.hero   { background: #EDE9FE; border-color: #8B5CF6; }
+.shop-item-val    { font-size: 30px; font-weight: 700; color: var(--tx1); }
+.shop-item.rare   .shop-item-val { color: #854F0B; }
+.shop-item.hero   .shop-item-val { color: #6D28D9; }
+.shop-item-name   { font-size: 10px; color: var(--tx2); text-align: center; }
+.shop-item-price  { font-size: 13px; font-weight: 700; color: var(--orange); }
+body.dark .shop-item.rare { background: #2e200a; border-color: #9a6e1a; }
+body.dark .shop-item.rare .shop-item-val { color: #d4a843; }
+body.dark .shop-item.hero { background: #1e1535; border-color: #6d43c5; }
+body.dark .shop-item.hero .shop-item-val { color: #a87de8; }
+
+/* deck pills */
+.deck-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.deck-pill {
+  font-size: 11px; padding: 2px 8px; border-radius: 99px;
+  border: 0.5px solid var(--bd3); color: var(--tx2); background: var(--bg2);
+}
+.deck-pill.rare   { background: #FAEEDA; border-color: #EF9F27; color: #854F0B; }
+.deck-pill.hero   { background: #EDE9FE; border-color: #8B5CF6; color: #6D28D9; }
+body.dark .deck-pill.rare { background: #2e200a; border-color: #9a6e1a; color: #c8a040; }
+body.dark .deck-pill.hero { background: #1e1535; border-color: #6d43c5; color: #a87de8; }
+
+/* ── Start / Gameover screens ── */
+#start-screen, #gameover-screen {
+  position: fixed; inset: 0; background: var(--bg); z-index: 300;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px;
+}
+#start-screen { display: flex; }
+#gameover-screen { display: none; }
+.screen-title {
+  font-size: 56px; font-weight: 800; color: var(--tx1);
+  letter-spacing: -3px; line-height: 1;
+}
+.screen-sub { font-size: 13px; color: var(--tx2); margin-top: -6px; margin-bottom: 8px; text-align: center; }
+.screen-btn {
+  width: 220px; padding: 13px;
+  border-radius: var(--r);
+  border: 0.5px solid var(--bd2);
+  background: var(--bg1);
+  font-size: 15px; font-weight: 500; color: var(--tx1);
+  cursor: pointer; text-align: center; transition: background 0.1s;
+}
+.screen-btn:hover { background: var(--bg2); }
+.screen-btn.primary { background: var(--blue); color: #fff; border: none; }
+.screen-btn.primary:hover { background: #2A72B7; }
+
+/* ── Game header ── */
+.game-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 2px 0;
+}
+.game-title { font-size: 17px; font-weight: 800; color: var(--tx1); letter-spacing: -0.5px; }
+.round-tag {
+  font-size: 11px; color: var(--tx2);
+  padding: 2px 10px; border-radius: 99px;
+  border: 0.5px solid var(--bd3); background: var(--bg2);
+}
+
+/* ── Dark toggle ── */
+#dark-toggle {
+  position: fixed; bottom: 16px; right: 16px; z-index: 400;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 0.5px solid var(--bd2); background: var(--bg1);
+  font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* ── How-to overlay ── */
+.howto-row { display: flex; gap: 8px; align-items: flex-start; }
+.howto-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.howto-text { font-size: 13px; color: var(--tx2); line-height: 1.6; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.anim-in { animation: fadeIn 0.2s ease; }
+</style>
+</head>
+<body>
+
+<!-- Start Screen -->
+<div id="start-screen">
+  <div class="screen-title">NUMBERTRO</div>
+  <div class="screen-sub">수식 기반 덱 빌딩 로그라이크</div>
+  <button class="screen-btn primary" onclick="startGame()">새 게임 시작</button>
+  <button class="screen-btn" onclick="openHowTo()">게임 방법</button>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameover-screen">
+  <div id="go-title" class="screen-title" style="font-size:38px; text-align:center"></div>
+  <div id="go-sub" class="screen-sub" style="max-width:300px"></div>
+  <button class="screen-btn primary" onclick="startGame()">다시 시작</button>
+  <button class="screen-btn" onclick="goToTitle()">타이틀로</button>
+</div>
+
+<!-- Main Game -->
+<div id="app">
+  <div class="game-header">
+    <div class="game-title">NUMBERTRO</div>
+    <div id="round-tag" class="round-tag">R1 T1 A</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="status-label">커트라인</div>
+      <div id="st-cutline" class="status-val">—</div>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-item">
+      <div class="status-label">이번 턴 점수</div>
+      <div id="st-turn-score" class="status-val">0</div>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-item">
+      <div class="status-label">골드</div>
+      <div id="st-gold" class="status-val" style="color:var(--orange)">0</div>
+    </div>
+  </div>
+
+  <div class="phase-row">
+    <div class="phase-badge" id="pb-0">A<span class="ph-score" id="ps-0">—</span></div>
+    <div class="phase-badge" id="pb-1">B<span class="ph-score" id="ps-1">—</span></div>
+    <div class="phase-badge" id="pb-2">C<span class="ph-score" id="ps-2">—</span></div>
+  </div>
+
+  <!-- Formula -->
+  <div class="formula-area">
+    <div class="formula-slot" id="fs-0" onclick="removeSlot(0)"><span class="slot-num">①</span></div>
+    <div class="formula-op" id="fo-0">+</div>
+    <div class="formula-slot" id="fs-1" onclick="removeSlot(1)"><span class="slot-num">②</span></div>
+    <div class="formula-op" id="fo-1">+</div>
+    <div class="formula-slot" id="fs-2" onclick="removeSlot(2)"><span class="slot-num">③</span></div>
+    <div class="formula-op" id="fo-2">+</div>
+    <div class="formula-slot" id="fs-3" onclick="removeSlot(3)"><span class="slot-num">④</span></div>
+    <div class="formula-result-wrap">
+      <div class="formula-result-label">결과</div>
+      <div id="formula-result" class="formula-result-val">—</div>
+    </div>
+  </div>
+
+  <!-- Hand -->
+  <div class="panel">
+    <div class="panel-label">
+      <span id="hand-label">드로우된 패 — 4장 선택</span>
+      <span id="hand-count" style="font-size:12px; color:var(--blue); font-weight:600"></span>
+    </div>
+    <div class="cards-row" id="hand-row"></div>
+  </div>
+
+  <!-- Blocks -->
+  <div class="panel">
+    <div class="panel-label">블럭 인벤토리 <span id="block-count" style="color:var(--tx3)"></span></div>
+    <div class="blocks-row" id="blocks-row"></div>
+  </div>
+
+  <!-- Submit -->
+  <button class="btn full primary" id="submit-btn" onclick="submitFormula()" disabled>
+    수식 제출
+  </button>
+</div>
+
+<!-- Result Overlay -->
+<div id="result-overlay" class="overlay-backdrop">
+  <div class="overlay-box anim-in">
+    <div id="res-title" class="overlay-title" style="text-align:center"></div>
+    <div id="res-score" class="result-score">0</div>
+    <div class="result-detail">
+      <div class="result-detail-item">페이즈 A<span id="rd-a" class="result-detail-val">—</span></div>
+      <div class="result-detail-item">페이즈 B<span id="rd-b" class="result-detail-val">—</span></div>
+      <div class="result-detail-item">페이즈 C<span id="rd-c" class="result-detail-val">—</span></div>
+      <div class="result-detail-item">커트라인<span id="rd-cut" class="result-detail-val" style="color:var(--tx3)">—</span></div>
+    </div>
+    <div id="res-msg" class="overlay-sub" style="text-align:center"></div>
+    <div id="res-gold" style="text-align:center"></div>
+    <button class="btn full primary" id="res-next-btn" onclick="proceedResult()"></button>
+  </div>
+</div>
+
+<!-- Shop Overlay -->
+<div id="shop-overlay" class="overlay-backdrop">
+  <div class="overlay-box">
+    <div style="display:flex; align-items:center; justify-content:space-between">
+      <div class="overlay-title">상점</div>
+      <div class="gold-badge">💰 <span id="shop-gold-val">0</span>G</div>
+    </div>
+    <div class="overlay-sub">카드를 구매해 덱을 강화하세요.</div>
+    <div>
+      <div style="font-size:11px; color:var(--tx3); margin-bottom:8px">카드 구매</div>
+      <div class="shop-item-row" id="shop-items"></div>
+    </div>
+    <div>
+      <div style="font-size:11px; color:var(--tx3); margin-bottom:7px">
+        현재 덱 <span id="deck-size-label"></span>
+      </div>
+      <div class="deck-pills" id="deck-pills"></div>
+    </div>
+    <button class="btn full primary" onclick="closeShop()">계속하기</button>
+  </div>
+</div>
+
+<!-- How-to Overlay -->
+<div id="howto-overlay" class="overlay-backdrop">
+  <div class="overlay-box">
+    <div class="overlay-title">게임 방법</div>
+    <div class="howto-row"><div class="howto-num">1</div><div class="howto-text">각 <b>턴</b>은 3개의 <b>페이즈(A→B→C)</b>로 구성됩니다.</div></div>
+    <div class="howto-row"><div class="howto-num">2</div><div class="howto-text">페이즈마다 덱에서 <b>7장</b> 드로우 → <b>4장 선택</b>해 수식 완성.</div></div>
+    <div class="howto-row"><div class="howto-num">3</div><div class="howto-text">수식 = <b>[카드] ＋ [카드] ＋ [카드] ＋ [카드]</b>. 수학 연산 우선순위 적용.</div></div>
+    <div class="howto-row"><div class="howto-num">4</div><div class="howto-text"><b>턴 점수</b>(페이즈 A+B+C 합산)가 커트라인 이상이면 통과!</div></div>
+    <div class="howto-row"><div class="howto-num">5</div><div class="howto-text">매 턴 후 <b>상점</b>에서 카드를 구매해 덱을 강화하세요.</div></div>
+    <div class="howto-row"><div class="howto-num">6</div><div class="howto-text"><b>8라운드 × 3턴</b>을 모두 통과하면 클리어!</div></div>
+    <button class="btn full primary" onclick="closeHowTo()">닫기</button>
+  </div>
+</div>
+
+<button id="dark-toggle" onclick="toggleDark()">🌙</button>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────
+const CUTLINES = [
+  null,
+  [35, 35, 25],
+  [55, 55, 40],
+  [80, 80, 60],
+  [120, 120, 90],
+  [180, 180, 135],
+  [270, 270, 200],
+  [400, 400, 300],
+  [600, 600, 450]
+];
+const MAX_ROUNDS   = 8;
+const DRAW_COUNT   = 7;
+const FORMULA_CARDS = 4;
+const FORMULA_BLOCKS = 3;
+
+// ─── HELPERS ─────────────────────────────────────────────────
+function gradeOf(v) {
+  if (v === 'A') return 'legend';
+  if (v >= 8)   return 'hero';
+  if (v >= 5)   return 'rare';
+  return 'normal';
+}
+function gradeTag(g) {
+  return { rare:'RARE', hero:'HERO', legend:'LEG', normal:'' }[g] || '';
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function buildInitialDeck() {
+  const d = [];
+  let id = 0;
+  for (let v = 0; v <= 9; v++) {
+    d.push({ id: id++, value: v, grade: gradeOf(v) });
+    d.push({ id: id++, value: v, grade: gradeOf(v) });
+  }
+  return d;
+}
+
+// ─── FORMULA EVALUATION ──────────────────────────────────────
+function evalFormula(vals, ops) {
+  // vals: [n0,n1,n2,n3], ops: [op0,op1,op2]
+  let nums = vals.map(Number);
+  let operators = [...ops];
+  for (const group of [['^'], ['×'], ['max'], ['+', '-']]) {
+    let i = 0;
+    while (i < operators.length) {
+      const op = operators[i];
+      if (group.includes(op)) {
+        const a = nums[i], b = nums[i + 1];
+        let r;
+        if (op === '^')   r = Math.pow(a, Math.min(b, 3));
+        else if (op === '×') r = a * b;
+        else if (op === 'max') r = Math.max(a, b) * 2;
+        else if (op === '+') r = a + b;
+        else if (op === '-') r = Math.abs(a - b);
+        nums.splice(i, 2, r);
+        operators.splice(i, 1);
+      } else {
+        i++;
+      }
+    }
+  }
+  return nums[0];
+}
+
+// ─── STATE ───────────────────────────────────────────────────
+let S = {};
+
+function initState() {
+  S = {
+    round: 1, turn: 1, phase: 0,
+    deck: buildInitialDeck(),
+    pool: [], hand: [],
+    formulaCards: [null, null, null, null],
+    blockInventory: ['+', '+', '+'],
+    phaseScores: [null, null, null],
+    turnScore: 0,
+    gold: 10,
+    shopItems: [],
+    lastPassed: false,
+    nextCardId: 20
+  };
+  startTurn();
+}
+
+function startTurn() {
+  S.pool = shuffle([...S.deck]);
+  S.phaseScores = [null, null, null];
+  S.turnScore = 0;
+  S.phase = 0;
+  startPhase();
+}
+
+function startPhase() {
+  const n = Math.min(DRAW_COUNT, S.pool.length);
+  S.hand = S.pool.splice(0, n);
+  S.formulaCards = [null, null, null, null];
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────
+function selectCard(handIdx) {
+  const existingSlot = S.formulaCards.indexOf(handIdx);
+  if (existingSlot !== -1) {
+    S.formulaCards[existingSlot] = null;
+  } else {
+    const empty = S.formulaCards.indexOf(null);
+    if (empty === -1) return;
+    S.formulaCards[empty] = handIdx;
+  }
+  render();
+}
+
+function removeSlot(slotIdx) {
+  if (S.formulaCards[slotIdx] === null) return;
+  S.formulaCards[slotIdx] = null;
+  render();
+}
+
+function previewResult() {
+  if (S.formulaCards.some(c => c === null)) return null;
+  const vals = S.formulaCards.map(i => S.hand[i].value);
+  const ops  = S.blockInventory.slice(0, FORMULA_BLOCKS);
+  return evalFormula(vals, ops);
+}
+
+function submitFormula() {
+  if (S.formulaCards.some(c => c === null)) return;
+  const vals = S.formulaCards.map(i => S.hand[i].value);
+  const ops  = S.blockInventory.slice(0, FORMULA_BLOCKS);
+  const score = evalFormula(vals, ops);
+
+  S.phaseScores[S.phase] = score;
+  S.turnScore += score;
+
+  // Return unselected hand cards to pool for next phase
+  const usedSet = new Set(S.formulaCards);
+  const unused  = S.hand.filter((_, i) => !usedSet.has(i));
+  S.pool.push(...unused);
+  shuffle(S.pool);
+
+  if (S.phase < 2) {
+    S.phase++;
+    startPhase();
+    render();
+  } else {
+    endTurn();
+  }
+}
+
+function endTurn() {
+  const cutline = CUTLINES[S.round][S.turn - 1];
+  const passed  = S.turnScore >= cutline;
+  S.lastPassed  = passed;
+
+  let goldEarned = 0;
+  if (passed) {
+    goldEarned = Math.max(5, Math.floor(S.turnScore / 8));
+    S.gold += goldEarned;
+    generateShop();
+  }
+  showResult(passed, cutline, goldEarned);
+}
+
+function proceedResult() {
+  closeOverlay('result-overlay');
+  if (!S.lastPassed) {
+    showGameOver(false);
+    return;
+  }
+  openShop();
+}
+
+function closeShop() {
+  closeOverlay('shop-overlay');
+  if (S.turn < 3) {
+    S.turn++;
+  } else if (S.round < MAX_ROUNDS) {
+    S.round++;
+    S.turn = 1;
+  } else {
+    showGameOver(true);
+    return;
+  }
+  startTurn();
+  render();
+}
+
+// ─── SHOP ────────────────────────────────────────────────────
+const SHOP_POOL = [
+  { value: 3, grade: 'normal', price: 5 },
+  { value: 4, grade: 'normal', price: 5 },
+  { value: 5, grade: 'rare',   price: 12 },
+  { value: 6, grade: 'rare',   price: 12 },
+  { value: 7, grade: 'rare',   price: 12 },
+  { value: 8, grade: 'hero',   price: 22 },
+  { value: 9, grade: 'hero',   price: 22 },
+];
+
+function generateShop() {
+  const pool = shuffle([...SHOP_POOL]);
+  S.shopItems = pool.slice(0, 3).map(item => ({ ...item, sold: false }));
+}
+
+function buyItem(idx) {
+  const item = S.shopItems[idx];
+  if (!item || item.sold || S.gold < item.price) return;
+  S.gold -= item.price;
+  item.sold = true;
+  S.deck.push({ id: S.nextCardId++, value: item.value, grade: item.grade });
+  renderShop();
+}
+
+// ─── UI ──────────────────────────────────────────────────────
+const PHASE_LABELS = ['A', 'B', 'C'];
+
+function render() {
+  // Header
+  document.getElementById('round-tag').textContent =
+    `R${S.round}  T${S.turn}  ${PHASE_LABELS[S.phase]}`;
+
+  // Status bar
+  const cutline = CUTLINES[S.round][S.turn - 1];
+  const tsEl = document.getElementById('st-turn-score');
+  tsEl.textContent  = S.turnScore;
+  tsEl.className    = 'status-val' + (S.turnScore >= cutline ? ' pass' : '');
+  document.getElementById('st-cutline').textContent = cutline;
+  document.getElementById('st-gold').textContent    = S.gold;
+
+  // Phase badges
+  for (let i = 0; i < 3; i++) {
+    const pb = document.getElementById(`pb-${i}`);
+    const ps = document.getElementById(`ps-${i}`);
+    pb.className = 'phase-badge';
+    if (i < S.phase) {
+      pb.classList.add('done');
+      ps.textContent = S.phaseScores[i];
+    } else if (i === S.phase) {
+      pb.classList.add('active');
+      ps.textContent = '진행 중';
+    } else {
+      ps.textContent = '—';
+    }
+  }
+
+  // Formula slots
+  for (let i = 0; i < 4; i++) {
+    const slot  = document.getElementById(`fs-${i}`);
+    const cidx  = S.formulaCards[i];
+    if (cidx !== null) {
+      const card = S.hand[cidx];
+      slot.className = `formula-slot filled ${card.grade}`;
+      slot.innerHTML = `${card.value}<span class="slot-num">${['①','②','③','④'][i]}</span>`;
+    } else {
+      slot.className = 'formula-slot';
+      slot.innerHTML = `<span class="slot-num">${['①','②','③','④'][i]}</span>`;
+    }
+  }
+
+  // Formula ops
+  for (let i = 0; i < 3; i++) {
+    document.getElementById(`fo-${i}`).textContent = S.blockInventory[i] || '+';
+  }
+
+  // Formula result preview
+  const preview = previewResult();
+  document.getElementById('formula-result').textContent = preview !== null ? preview : '—';
+
+  // Hand
+  const handRow = document.getElementById('hand-row');
+  handRow.innerHTML = '';
+  const selectedCount = S.formulaCards.filter(c => c !== null).length;
+  S.hand.forEach((card, i) => {
+    const slotPos  = S.formulaCards.indexOf(i);
+    const selected = slotPos !== -1;
+    const el = document.createElement('div');
+    el.className = `card ${card.grade}${selected ? ' selected' : ''}`;
+    const badge = selected
+      ? `<div class="slot-badge">${slotPos + 1}</div>` : '';
+    const tag = gradeTag(card.grade)
+      ? `<div class="card-grade-tag">${gradeTag(card.grade)}</div>` : '';
+    el.innerHTML = `${badge}${tag}<div class="card-val">${card.value}</div>`;
+    el.onclick = () => selectCard(i);
+    handRow.appendChild(el);
+  });
+  document.getElementById('hand-count').textContent = `${selectedCount}/4`;
+
+  // Blocks
+  const blocksRow = document.getElementById('blocks-row');
+  blocksRow.innerHTML = '';
+  S.blockInventory.forEach(sym => {
+    const el = document.createElement('div');
+    el.className = 'block-chip';
+    el.textContent = sym;
+    blocksRow.appendChild(el);
+  });
+  document.getElementById('block-count').textContent = `(${S.blockInventory.length}개)`;
+
+  // Submit
+  document.getElementById('submit-btn').disabled = selectedCount < 4;
+}
+
+function showResult(passed, cutline, goldEarned) {
+  document.getElementById('res-title').textContent = passed ? '턴 통과! 🎉' : '게임 오버';
+  const scoreEl = document.getElementById('res-score');
+  scoreEl.textContent = S.turnScore;
+  scoreEl.className   = `result-score ${passed ? 'pass' : 'fail'}`;
+  document.getElementById('rd-a').textContent   = S.phaseScores[0] ?? '—';
+  document.getElementById('rd-b').textContent   = S.phaseScores[1] ?? '—';
+  document.getElementById('rd-c').textContent   = S.phaseScores[2] ?? '—';
+  document.getElementById('rd-cut').textContent = cutline;
+  document.getElementById('res-msg').textContent = passed
+    ? `커트라인 ${cutline}을 통과했습니다.`
+    : `커트라인 ${cutline}에 ${cutline - S.turnScore}점 부족합니다.`;
+  document.getElementById('res-gold').innerHTML = passed
+    ? `<div class="gold-badge">💰 +${goldEarned}G 획득</div>` : '';
+  document.getElementById('res-next-btn').textContent = passed ? '상점으로 →' : '확인';
+  openOverlay('result-overlay');
+}
+
+function openShop() {
+  renderShop();
+  openOverlay('shop-overlay');
+}
+
+function renderShop() {
+  document.getElementById('shop-gold-val').textContent = S.gold;
+  const itemsEl = document.getElementById('shop-items');
+  itemsEl.innerHTML = '';
+  S.shopItems.forEach((item, i) => {
+    const el = document.createElement('div');
+    const cantAfford = !item.sold && S.gold < item.price;
+    el.className = `shop-item ${item.grade}${item.sold ? ' sold' : ''}${cantAfford ? ' cant' : ''}`;
+    el.innerHTML = `
+      <div class="shop-item-val">${item.value}</div>
+      <div class="shop-item-name">${item.sold ? '구매됨' : (gradeTag(item.grade) || '일반') + ' 카드'}</div>
+      <div class="shop-item-price">${item.sold ? '—' : item.price + 'G'}</div>`;
+    if (!item.sold && !cantAfford) el.onclick = () => buyItem(i);
+    itemsEl.appendChild(el);
+  });
+
+  // Deck overview
+  const counts = {};
+  S.deck.forEach(c => {
+    const k = `${c.value}|${c.grade}`;
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  document.getElementById('deck-size-label').textContent = `(${S.deck.length}장)`;
+  const pillsEl = document.getElementById('deck-pills');
+  pillsEl.innerHTML = '';
+  Object.entries(counts)
+    .sort((a, b) => Number(a[0].split('|')[0]) - Number(b[0].split('|')[0]))
+    .forEach(([key, cnt]) => {
+      const [val, grade] = key.split('|');
+      const el = document.createElement('div');
+      el.className = `deck-pill ${grade === 'normal' ? '' : grade}`;
+      el.textContent = `${val} ×${cnt}`;
+      pillsEl.appendChild(el);
+    });
+}
+
+function showGameOver(won) {
+  document.getElementById('app').style.display = 'none';
+  closeOverlay('result-overlay');
+  closeOverlay('shop-overlay');
+  if (won) {
+    document.getElementById('go-title').textContent = 'CLEAR!';
+    document.getElementById('go-sub').textContent =
+      `${MAX_ROUNDS}라운드를 모두 통과했습니다!\n최종 골드: ${S.gold}G`;
+  } else {
+    document.getElementById('go-title').textContent = 'GAME OVER';
+    document.getElementById('go-sub').textContent =
+      `R${S.round} T${S.turn}에서 탈락\n커트라인: ${CUTLINES[S.round][S.turn-1]}  내 점수: ${S.turnScore}`;
+  }
+  document.getElementById('gameover-screen').style.display = 'flex';
+}
+
+// ─── SCREEN NAV ──────────────────────────────────────────────
+function startGame() {
+  document.getElementById('start-screen').style.display   = 'none';
+  document.getElementById('gameover-screen').style.display = 'none';
+  document.getElementById('app').style.display            = 'flex';
+  initState();
+  render();
+}
+function goToTitle() {
+  document.getElementById('gameover-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display    = 'flex';
+}
+function openHowTo()  { openOverlay('howto-overlay'); }
+function closeHowTo() { closeOverlay('howto-overlay'); }
+
+function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+
+// ─── DARK MODE ───────────────────────────────────────────────
+function toggleDark() {
+  const dark = document.body.classList.toggle('dark');
+  document.getElementById('dark-toggle').textContent = dark ? '☀️' : '🌙';
+  localStorage.setItem('numbertro-dark', dark ? '1' : '0');
+}
+
+// init dark
+(function() {
+  const saved = localStorage.getItem('numbertro-dark');
+  const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === '1' || (saved === null && preferDark)) {
+    document.body.classList.add('dark');
+    document.getElementById('dark-toggle').textContent = '☀️';
+  }
+})();
+</script>
+</body>
+</html>
