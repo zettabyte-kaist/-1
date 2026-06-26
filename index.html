@@ -19,7 +19,6 @@
   --green:   #1D9E75;
   --red:     #E24B4A;
   --orange:  #BA7517;
-  --purple:  #6D28D9;
   --r:       6px;
   --rl:      12px;
 }
@@ -67,10 +66,6 @@ body {
 .card:hover { border-color: var(--bd1); }
 .card.selected { border: 2px solid var(--blue); transform: translateY(-7px); }
 .card-val { font-size: 26px; font-weight: 600; color: var(--tx1); line-height: 1; }
-.card-grade-tag {
-  position: absolute; top: 5px; right: 5px;
-  font-size: 7px; font-weight: 700; color: var(--tx3);
-}
 .slot-badge {
   position: absolute; top: 5px; left: 5px;
   width: 16px; height: 16px; border-radius: 50%;
@@ -78,22 +73,6 @@ body {
   font-size: 9px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
-/* grade tints */
-.card.rare  { background: #FAEEDA; border-color: #EF9F27; }
-.card.rare  .card-val { color: #854F0B; }
-.card.rare  .card-grade-tag { color: #BA7517; }
-.card.hero  { background: #EDE9FE; border-color: #8B5CF6; }
-.card.hero  .card-val { color: #6D28D9; }
-.card.hero  .card-grade-tag { color: #6D28D9; }
-.card.legend { background: #ECFEFF; border-color: #22D3EE; }
-.card.legend .card-val { color: #0891B2; }
-body.dark .card         { background: var(--bg1); }
-body.dark .card.rare    { background: #2e200a; border-color: #9a6e1a; }
-body.dark .card.rare    .card-val { color: #d4a843; }
-body.dark .card.hero    { background: #1e1535; border-color: #6d43c5; }
-body.dark .card.hero    .card-val { color: #a87de8; }
-body.dark .card.legend  { background: #042F45; border-color: #0891B2; }
-body.dark .card.legend  .card-val { color: #22D3EE; }
 
 /* ── Formula area ── */
 .formula-area {
@@ -122,12 +101,6 @@ body.dark .card.legend  .card-val { color: #22D3EE; }
 }
 .formula-slot.filled { border-style: solid; border-color: var(--bd2); }
 .formula-slot.filled:hover { border-color: var(--red); }
-.formula-slot.filled.rare  { background: #FAEEDA; border-color: #EF9F27; color: #854F0B; }
-.formula-slot.filled.hero  { background: #EDE9FE; border-color: #8B5CF6; color: #6D28D9; }
-.formula-slot.filled.legend { background: #ECFEFF; border-color: #22D3EE; color: #0891B2; }
-body.dark .formula-slot.filled.rare   { background: #2e200a; border-color: #9a6e1a; color: #d4a843; }
-body.dark .formula-slot.filled.hero   { background: #1e1535; border-color: #6d43c5; color: #a87de8; }
-body.dark .formula-slot.filled.legend { background: #042F45; border-color: #0891B2; color: #22D3EE; }
 .formula-op {
   font-size: 18px; font-weight: 500; color: var(--blue);
   min-width: 16px; text-align: center; flex-shrink: 0;
@@ -263,17 +236,9 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
 .shop-item.sold { opacity: 0.35; pointer-events: none; }
 .shop-item.cant { opacity: 0.5; cursor: not-allowed; }
 .shop-item.cant:hover { border-color: var(--bd2); }
-.shop-item.rare   { background: #FAEEDA; border-color: #EF9F27; }
-.shop-item.hero   { background: #EDE9FE; border-color: #8B5CF6; }
 .shop-item-val    { font-size: 30px; font-weight: 700; color: var(--tx1); }
-.shop-item.rare   .shop-item-val { color: #854F0B; }
-.shop-item.hero   .shop-item-val { color: #6D28D9; }
 .shop-item-name   { font-size: 10px; color: var(--tx2); text-align: center; }
 .shop-item-price  { font-size: 13px; font-weight: 700; color: var(--orange); }
-body.dark .shop-item.rare { background: #2e200a; border-color: #9a6e1a; }
-body.dark .shop-item.rare .shop-item-val { color: #d4a843; }
-body.dark .shop-item.hero { background: #1e1535; border-color: #6d43c5; }
-body.dark .shop-item.hero .shop-item-val { color: #a87de8; }
 
 /* deck pills */
 .deck-pills { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -281,10 +246,6 @@ body.dark .shop-item.hero .shop-item-val { color: #a87de8; }
   font-size: 11px; padding: 2px 8px; border-radius: 99px;
   border: 0.5px solid var(--bd3); color: var(--tx2); background: var(--bg2);
 }
-.deck-pill.rare   { background: #FAEEDA; border-color: #EF9F27; color: #854F0B; }
-.deck-pill.hero   { background: #EDE9FE; border-color: #8B5CF6; color: #6D28D9; }
-body.dark .deck-pill.rare { background: #2e200a; border-color: #9a6e1a; color: #c8a040; }
-body.dark .deck-pill.hero { background: #1e1535; border-color: #6d43c5; color: #a87de8; }
 
 /* ── Start / Gameover screens ── */
 #start-screen, #gameover-screen {
@@ -504,15 +465,6 @@ const FORMULA_CARDS = 4;
 const FORMULA_BLOCKS = 3;
 
 // ─── HELPERS ─────────────────────────────────────────────────
-function gradeOf(v) {
-  if (v === 'A') return 'legend';
-  if (v >= 8)   return 'hero';
-  if (v >= 5)   return 'rare';
-  return 'normal';
-}
-function gradeTag(g) {
-  return { rare:'RARE', hero:'HERO', legend:'LEG', normal:'' }[g] || '';
-}
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -524,8 +476,8 @@ function buildInitialDeck() {
   const d = [];
   let id = 0;
   for (let v = 0; v <= 9; v++) {
-    d.push({ id: id++, value: v, grade: gradeOf(v) });
-    d.push({ id: id++, value: v, grade: gradeOf(v) });
+    d.push({ id: id++, value: v });
+    d.push({ id: id++, value: v });
   }
   return d;
 }
@@ -681,13 +633,13 @@ function closeShop() {
 
 // ─── SHOP ────────────────────────────────────────────────────
 const SHOP_POOL = [
-  { value: 3, grade: 'normal', price: 5 },
-  { value: 4, grade: 'normal', price: 5 },
-  { value: 5, grade: 'rare',   price: 12 },
-  { value: 6, grade: 'rare',   price: 12 },
-  { value: 7, grade: 'rare',   price: 12 },
-  { value: 8, grade: 'hero',   price: 22 },
-  { value: 9, grade: 'hero',   price: 22 },
+  { value: 3, price: 5 },
+  { value: 4, price: 5 },
+  { value: 5, price: 8 },
+  { value: 6, price: 8 },
+  { value: 7, price: 8 },
+  { value: 8, price: 15 },
+  { value: 9, price: 15 },
 ];
 
 function generateShop() {
@@ -700,7 +652,7 @@ function buyItem(idx) {
   if (!item || item.sold || S.gold < item.price) return;
   S.gold -= item.price;
   item.sold = true;
-  S.deck.push({ id: S.nextCardId++, value: item.value, grade: item.grade });
+  S.deck.push({ id: S.nextCardId++, value: item.value });
   renderShop();
 }
 
@@ -742,7 +694,7 @@ function render() {
     const cidx  = S.formulaCards[i];
     if (cidx !== null) {
       const card = S.hand[cidx];
-      slot.className = `formula-slot filled ${card.grade}`;
+      slot.className = 'formula-slot filled';
       slot.innerHTML = `${card.value}<span class="slot-num">${['①','②','③','④'][i]}</span>`;
     } else {
       slot.className = 'formula-slot';
@@ -767,12 +719,10 @@ function render() {
     const slotPos  = S.formulaCards.indexOf(i);
     const selected = slotPos !== -1;
     const el = document.createElement('div');
-    el.className = `card ${card.grade}${selected ? ' selected' : ''}`;
+    el.className = `card${selected ? ' selected' : ''}`;
     const badge = selected
       ? `<div class="slot-badge">${slotPos + 1}</div>` : '';
-    const tag = gradeTag(card.grade)
-      ? `<div class="card-grade-tag">${gradeTag(card.grade)}</div>` : '';
-    el.innerHTML = `${badge}${tag}<div class="card-val">${card.value}</div>`;
+    el.innerHTML = `${badge}<div class="card-val">${card.value}</div>`;
     el.onclick = () => selectCard(i);
     handRow.appendChild(el);
   });
@@ -823,10 +773,10 @@ function renderShop() {
   S.shopItems.forEach((item, i) => {
     const el = document.createElement('div');
     const cantAfford = !item.sold && S.gold < item.price;
-    el.className = `shop-item ${item.grade}${item.sold ? ' sold' : ''}${cantAfford ? ' cant' : ''}`;
+    el.className = `shop-item${item.sold ? ' sold' : ''}${cantAfford ? ' cant' : ''}`;
     el.innerHTML = `
       <div class="shop-item-val">${item.value}</div>
-      <div class="shop-item-name">${item.sold ? '구매됨' : (gradeTag(item.grade) || '일반') + ' 카드'}</div>
+      <div class="shop-item-name">${item.sold ? '구매됨' : '카드'}</div>
       <div class="shop-item-price">${item.sold ? '—' : item.price + 'G'}</div>`;
     if (!item.sold && !cantAfford) el.onclick = () => buyItem(i);
     itemsEl.appendChild(el);
@@ -834,19 +784,15 @@ function renderShop() {
 
   // Deck overview
   const counts = {};
-  S.deck.forEach(c => {
-    const k = `${c.value}|${c.grade}`;
-    counts[k] = (counts[k] || 0) + 1;
-  });
+  S.deck.forEach(c => { counts[c.value] = (counts[c.value] || 0) + 1; });
   document.getElementById('deck-size-label').textContent = `(${S.deck.length}장)`;
   const pillsEl = document.getElementById('deck-pills');
   pillsEl.innerHTML = '';
   Object.entries(counts)
-    .sort((a, b) => Number(a[0].split('|')[0]) - Number(b[0].split('|')[0]))
-    .forEach(([key, cnt]) => {
-      const [val, grade] = key.split('|');
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .forEach(([val, cnt]) => {
       const el = document.createElement('div');
-      el.className = `deck-pill ${grade === 'normal' ? '' : grade}`;
+      el.className = 'deck-pill';
       el.textContent = `${val} ×${cnt}`;
       pillsEl.appendChild(el);
     });
