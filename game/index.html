@@ -61,11 +61,11 @@ body {
   align-items: center; justify-content: center;
   cursor: pointer; user-select: none;
   position: relative; flex-shrink: 0;
-  transition: border-color 0.12s, transform 0.12s, opacity 0.12s;
+  transition: border-color 0.12s, opacity 0.12s;
 }
 .card:hover { border-color: var(--bd1); }
-.card.in-label { border: 2px solid var(--blue); transform: translateY(-7px); }
-.card.in-single { border: 2px solid var(--green); transform: translateY(-7px); }
+.card.in-label { border: 2px solid var(--blue); }
+.card.in-single { border: 2px solid var(--green); }
 .card-val { font-size: 26px; font-weight: 600; color: var(--tx1); line-height: 1; }
 .card-badge {
   position: absolute; top: 5px; left: 5px;
@@ -98,18 +98,25 @@ body {
 body.dark .label-chip { background: #0d2340; border-color: #2A72B7; }
 body.dark .label-chip.active { background: var(--blue); color: #fff; }
 
-/* ── Selection summary bar ── */
-.selection-bar {
-  background: var(--bg2);
-  border: 0.5px solid var(--bd3);
-  border-radius: var(--r);
-  padding: 8px 14px;
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 13px;
+/* ── Submit area ── */
+.submit-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--bd3);
 }
-.selection-bar-label { color: var(--tx3); }
-.selection-bar-count { font-weight: 700; color: var(--tx1); }
-.selection-bar-count.ready { color: var(--green); }
+.submit-item:last-child { border-bottom: none; }
+.submit-item.empty .submit-item-cards { color: var(--tx3); font-size: 13px; }
+.submit-item-tag {
+  font-size: 11px; font-weight: 600; padding: 2px 8px;
+  border-radius: 99px; flex-shrink: 0;
+}
+.submit-item-tag.label-tag { background: #EBF4FF; color: var(--blue); border: 0.5px solid var(--blue); }
+.submit-item-tag.single-tag { background: #E6F9F2; color: var(--green); border: 0.5px solid var(--green); }
+.submit-item-tag.empty-tag { background: var(--bg2); color: var(--tx3); border: 0.5px dashed var(--bd2); }
+body.dark .submit-item-tag.label-tag { background: #0d2340; }
+body.dark .submit-item-tag.single-tag { background: #082918; }
+.submit-item-cards { flex: 1; font-size: 15px; font-weight: 500; color: var(--tx1); }
+.submit-item-score { font-size: 18px; font-weight: 800; color: var(--tx1); }
 
 /* ── Panel ── */
 .panel {
@@ -358,13 +365,16 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
     <div class="cards-row" id="hand-row"></div>
   </div>
 
-  <!-- Selection summary -->
-  <div class="selection-bar">
-    <span class="selection-bar-label">득점 항목</span>
-    <span id="sel-count" class="selection-bar-count">0 / 3</span>
+  <!-- Submit area -->
+  <div class="panel">
+    <div class="panel-label">
+      <span>페이즈 제출 항목</span>
+      <span id="sel-count" style="font-size:12px; color:var(--blue); font-weight:600">0 / 3</span>
+    </div>
+    <div id="submit-items"></div>
   </div>
 
-  <!-- Submit -->
+  <!-- Submit button -->
   <button class="btn full primary" id="submit-btn" onclick="submitPhase()" disabled>페이즈 제출</button>
 </div>
 
@@ -751,13 +761,49 @@ function render() {
     handRow.appendChild(el);
   });
 
-  // Selection summary
+  // Submit area
   const count = activeItemCount();
-  const countEl = document.getElementById('sel-count');
-  countEl.textContent = `${count} / ${OPPS_PER_PHASE}`;
-  countEl.className = `selection-bar-count${count === OPPS_PER_PHASE ? ' ready' : ''}`;
+  document.getElementById('sel-count').textContent = `${count} / ${OPPS_PER_PHASE}`;
 
-  // Submit
+  const submitItemsEl = document.getElementById('submit-items');
+  submitItemsEl.innerHTML = '';
+  const displayItems = [];
+  for (const label of S.labelInventory) {
+    const cards = S.labelGroups[label.id];
+    if (cards && cards.length > 0) {
+      const vals = cards.map(i => S.hand[i].value);
+      displayItems.push({ type: 'label', label, vals, score: calcLabelScore(label.rule, vals) });
+    }
+  }
+  for (const handIdx of S.singleCards) {
+    const card = S.hand[handIdx];
+    displayItems.push({ type: 'single', card, score: card.value });
+  }
+  const needed = OPPS_PER_PHASE - displayItems.length;
+  for (let i = 0; i < needed; i++) displayItems.push({ type: 'empty' });
+
+  displayItems.forEach(item => {
+    const row = document.createElement('div');
+    row.className = `submit-item${item.type === 'empty' ? ' empty' : ''}`;
+    if (item.type === 'label') {
+      row.innerHTML = `
+        <div class="submit-item-tag label-tag">${item.label.symbol} ${item.label.name}</div>
+        <div class="submit-item-cards">${item.vals.join(' + ')}</div>
+        <div class="submit-item-score">${item.score}</div>`;
+    } else if (item.type === 'single') {
+      row.innerHTML = `
+        <div class="submit-item-tag single-tag">단독</div>
+        <div class="submit-item-cards">${item.card.value}</div>
+        <div class="submit-item-score">${item.score}</div>`;
+    } else {
+      row.innerHTML = `
+        <div class="submit-item-tag empty-tag">빈 슬롯</div>
+        <div class="submit-item-cards">—</div>`;
+    }
+    submitItemsEl.appendChild(row);
+  });
+
+  // Submit button
   document.getElementById('submit-btn').disabled = count !== OPPS_PER_PHASE;
 }
 
