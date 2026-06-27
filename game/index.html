@@ -64,38 +64,22 @@ body {
   transition: border-color 0.12s, transform 0.12s, opacity 0.12s;
 }
 .card:hover { border-color: var(--bd1); }
-.card.selected { border: 2px solid var(--blue); transform: translateY(-7px); }
-.card.used { opacity: 0.28; cursor: not-allowed; }
-.card.used:hover { border-color: var(--bd2); }
+.card.in-label { border: 2px solid var(--blue); transform: translateY(-7px); }
+.card.in-single { border: 2px solid var(--green); transform: translateY(-7px); }
 .card-val { font-size: 26px; font-weight: 600; color: var(--tx1); line-height: 1; }
-
-/* ── Opportunity slots ── */
-.opp-slots { display: flex; flex-direction: column; gap: 8px; }
-.opp-slot {
-  background: var(--bg1);
-  border: 1.5px dashed var(--bd2);
-  border-radius: var(--rl);
-  padding: 10px 14px;
-  min-height: 60px;
-  display: flex; align-items: center; gap: 10px;
-}
-.opp-slot.active { border-color: var(--blue); border-style: solid; }
-.opp-slot.done   { border-style: solid; border-color: var(--bd3); }
-.opp-slot-num {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: var(--bd3); color: var(--tx3);
-  font-size: 11px; font-weight: 700; flex-shrink: 0;
+.card-badge {
+  position: absolute; top: 5px; left: 5px;
+  width: 18px; height: 18px; border-radius: 50%;
+  font-size: 10px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
-.opp-slot.active .opp-slot-num { background: var(--blue); color: #fff; }
-.opp-slot.done   .opp-slot-num { background: var(--green); color: #fff; }
-.opp-slot-content { flex: 1; font-size: 14px; color: var(--tx2); }
-.opp-slot-score { font-size: 22px; font-weight: 800; color: var(--tx1); }
+.card-badge.label-badge { background: var(--blue); color: #fff; }
+.card-badge.single-badge { background: var(--green); color: #fff; }
 
 /* ── Label chips ── */
 .label-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .label-chip {
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: var(--r);
   border: 0.5px solid var(--blue);
   background: #EBF4FF;
@@ -103,13 +87,29 @@ body {
   font-size: 14px; font-weight: 600;
   cursor: pointer; user-select: none;
   transition: background 0.12s;
+  display: flex; align-items: center; gap: 6px;
 }
-.label-chip.selected,
-.label-chip:hover { background: var(--blue); color: #fff; }
-.label-chip.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.label-chip .chip-count {
+  font-size: 11px; font-weight: 500; opacity: 0.75;
+}
+.label-chip.active { background: var(--blue); color: #fff; }
+.label-chip.active .chip-count { opacity: 0.85; }
+.label-chip.used-once { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 body.dark .label-chip { background: #0d2340; border-color: #2A72B7; }
-body.dark .label-chip.selected,
-body.dark .label-chip:hover { background: var(--blue); color: #fff; }
+body.dark .label-chip.active { background: var(--blue); color: #fff; }
+
+/* ── Selection summary bar ── */
+.selection-bar {
+  background: var(--bg2);
+  border: 0.5px solid var(--bd3);
+  border-radius: var(--r);
+  padding: 8px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px;
+}
+.selection-bar-label { color: var(--tx3); }
+.selection-bar-count { font-weight: 700; color: var(--tx1); }
+.selection-bar-count.ready { color: var(--green); }
 
 /* ── Panel ── */
 .panel {
@@ -141,7 +141,6 @@ body.dark .label-chip:hover { background: var(--blue); color: #fff; }
 .status-item { text-align: center; flex: 1; }
 .status-label { font-size: 10px; color: var(--tx3); }
 .status-val   { font-size: 17px; font-weight: 700; color: var(--tx1); }
-.status-val.danger { color: var(--red); }
 .status-val.pass   { color: var(--green); }
 .status-divider { width: 0.5px; height: 30px; background: var(--bd3); flex-shrink: 0; }
 
@@ -344,45 +343,29 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
     <div class="phase-badge" id="pb-2">C<span class="ph-score" id="ps-2">—</span></div>
   </div>
 
-  <!-- Opportunity Slots -->
-  <div class="opp-slots" id="opp-slots">
-    <div class="opp-slot" id="os-0">
-      <div class="opp-slot-num">1</div>
-      <div class="opp-slot-content" id="oc-0">카드 또는 레이블 선택</div>
-      <div class="opp-slot-score" id="oscr-0" style="display:none"></div>
-    </div>
-    <div class="opp-slot" id="os-1">
-      <div class="opp-slot-num">2</div>
-      <div class="opp-slot-content" id="oc-1">득점 기회 2</div>
-      <div class="opp-slot-score" id="oscr-1" style="display:none"></div>
-    </div>
-    <div class="opp-slot" id="os-2">
-      <div class="opp-slot-num">3</div>
-      <div class="opp-slot-content" id="oc-2">득점 기회 3</div>
-      <div class="opp-slot-score" id="oscr-2" style="display:none"></div>
-    </div>
-  </div>
-
   <!-- Label Inventory -->
   <div class="panel">
-    <div class="panel-label">레이블 인벤토리 — 선택하면 카드 묶기 모드</div>
+    <div class="panel-label">레이블 인벤토리 — 선택 후 카드 지정</div>
     <div class="label-row" id="label-row"></div>
   </div>
 
   <!-- Hand -->
   <div class="panel">
     <div class="panel-label">
-      <span id="hand-label">드로우된 패 — 클릭으로 단독 제출</span>
-      <span id="hand-count" style="font-size:12px; color:var(--blue); font-weight:600"></span>
+      <span id="hand-label">드로우된 패</span>
+      <span id="hand-hint" style="font-size:11px; color:var(--tx3)"></span>
     </div>
     <div class="cards-row" id="hand-row"></div>
   </div>
 
-  <!-- Action Buttons (레이블 모드일 때만 표시) -->
-  <div id="action-row" style="display:none; gap:8px;">
-    <button class="btn" id="cancel-btn" onclick="cancelOpp()">취소</button>
-    <button class="btn full primary" id="confirm-btn" onclick="confirmOpp()" disabled>확인</button>
+  <!-- Selection summary -->
+  <div class="selection-bar">
+    <span class="selection-bar-label">득점 항목</span>
+    <span id="sel-count" class="selection-bar-count">0 / 3</span>
   </div>
+
+  <!-- Submit -->
+  <button class="btn full primary" id="submit-btn" onclick="submitPhase()" disabled>페이즈 제출</button>
 </div>
 
 <!-- Result Overlay -->
@@ -429,12 +412,12 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
   <div class="overlay-box">
     <div class="overlay-title">게임 방법</div>
     <div class="howto-row"><div class="howto-num">1</div><div class="howto-text">각 <b>턴</b>은 3개의 <b>페이즈(A→B→C)</b>로 구성됩니다.</div></div>
-    <div class="howto-row"><div class="howto-num">2</div><div class="howto-text">페이즈마다 덱에서 <b>7장</b> 드로우. 이전 페이즈에서 미사용 카드는 다음 페이즈에 포함됩니다.</div></div>
-    <div class="howto-row"><div class="howto-num">3</div><div class="howto-text">페이즈마다 <b>3번의 득점 기회</b>. 각 기회에서 레이블+카드 묶음 또는 단일 카드를 제출.</div></div>
-    <div class="howto-row"><div class="howto-num">4</div><div class="howto-text"><b>레이블</b>은 카드를 묶어 점수를 계산. <b>더하기 레이블</b>은 최대 3장 카드의 합을 득점.</div></div>
-    <div class="howto-row"><div class="howto-num">5</div><div class="howto-text"><b>턴 점수</b>(페이즈 A+B+C 합산)가 커트라인 이상이면 통과!</div></div>
-    <div class="howto-row"><div class="howto-num">6</div><div class="howto-text">매 턴 후 <b>상점</b>에서 카드를 구매해 덱을 강화하세요.</div></div>
-    <div class="howto-row"><div class="howto-num">7</div><div class="howto-text"><b>8라운드 × 3턴</b>을 모두 통과하면 클리어!</div></div>
+    <div class="howto-row"><div class="howto-num">2</div><div class="howto-text">페이즈마다 덱에서 <b>7장</b> 드로우. 미사용 카드는 다음 페이즈로 넘어갑니다.</div></div>
+    <div class="howto-row"><div class="howto-num">3</div><div class="howto-text">레이블 칩을 선택하면 카드를 묶을 수 있습니다. 레이블 없이 카드를 클릭하면 <b>단독 제출</b>.</div></div>
+    <div class="howto-row"><div class="howto-num">4</div><div class="howto-text">페이즈마다 <b>득점 항목 3개</b>를 모두 지정한 뒤 한 번에 제출합니다.</div></div>
+    <div class="howto-row"><div class="howto-num">5</div><div class="howto-text"><b>더하기 레이블</b>: 묶은 카드들의 합을 득점. 최대 3장. 페이즈당 1회 사용.</div></div>
+    <div class="howto-row"><div class="howto-num">6</div><div class="howto-text"><b>턴 점수</b>(페이즈 A+B+C 합산)가 커트라인 이상이면 통과!</div></div>
+    <div class="howto-row"><div class="howto-num">7</div><div class="howto-text">매 턴 후 <b>상점</b>에서 카드를 구매해 덱을 강화하세요.</div></div>
     <button class="btn full primary" onclick="closeHowTo()">닫기</button>
   </div>
 </div>
@@ -454,8 +437,8 @@ const CUTLINES = [
   [400, 400, 300],
   [600, 600, 450]
 ];
-const MAX_ROUNDS    = 8;
-const DRAW_COUNT    = 7;
+const MAX_ROUNDS     = 8;
+const DRAW_COUNT     = 7;
 const OPPS_PER_PHASE = 3;
 
 const INITIAL_LABELS = [
@@ -470,6 +453,7 @@ function shuffle(a) {
   }
   return a;
 }
+
 function buildInitialDeck() {
   const d = [];
   let id = 0;
@@ -494,9 +478,10 @@ function initState() {
     deck: buildInitialDeck(),
     pool: [], hand: [],
     labelInventory: INITIAL_LABELS.map(l => ({ ...l })),
-    opportunities: [null, null, null],
-    activeOpp: null,
-    usedCardIds: new Set(),
+    // Phase selection state
+    labelGroups: {},    // { labelId: [handIdx, ...] } — built up before submit
+    singleCards: [],    // [handIdx, ...] — single-card selections
+    activeLabelId: null, // which label chip is currently active
     phaseScores: [null, null, null],
     turnScore: 0,
     gold: 10,
@@ -519,83 +504,102 @@ function startTurn() {
 function startPhase() {
   const n = Math.min(DRAW_COUNT, S.pool.length);
   S.hand = S.pool.splice(0, n);
-  S.opportunities = [null, null, null];
-  S.activeOpp = null;
-  S.usedCardIds = new Set();
+  S.labelGroups = {};
+  S.singleCards = [];
+  S.activeLabelId = null;
+}
+
+// ─── HELPERS: selection counts ────────────────────────────────
+function activeItemCount() {
+  const labelCount = Object.values(S.labelGroups).filter(arr => arr.length > 0).length;
+  return labelCount + S.singleCards.length;
+}
+
+function cardAssignment(handIdx) {
+  // Returns { type: 'label', labelId } | { type: 'single' } | null
+  for (const [labelId, cards] of Object.entries(S.labelGroups)) {
+    if (cards.includes(handIdx)) return { type: 'label', labelId: Number(labelId) };
+  }
+  if (S.singleCards.includes(handIdx)) return { type: 'single' };
+  return null;
 }
 
 // ─── ACTIONS ─────────────────────────────────────────────────
 function selectLabel(labelId) {
-  const nextSlot = S.opportunities.indexOf(null);
-  if (nextSlot === -1) return;
-  if (S.activeOpp && S.activeOpp.labelId === labelId) {
-    S.activeOpp = null;
+  if (S.activeLabelId === labelId) {
+    S.activeLabelId = null;
   } else {
-    S.activeOpp = { slot: nextSlot, type: 'label', labelId, selectedCards: [] };
+    S.activeLabelId = labelId;
   }
   render();
 }
 
-function selectCardForOpp(handIdx) {
-  const card = S.hand[handIdx];
-  if (S.usedCardIds.has(card.id)) return;
+function selectCard(handIdx) {
+  const assignment = cardAssignment(handIdx);
 
-  if (!S.activeOpp) {
-    const nextSlot = S.opportunities.indexOf(null);
-    if (nextSlot === -1) return;
-    S.opportunities[nextSlot] = { type: 'single', card, score: card.value };
-    S.usedCardIds.add(card.id);
-    checkPhaseComplete();
-  } else {
-    const label = S.labelInventory.find(l => l.id === S.activeOpp.labelId);
-    const idx = S.activeOpp.selectedCards.indexOf(handIdx);
-    if (idx !== -1) {
-      S.activeOpp.selectedCards.splice(idx, 1);
-    } else if (S.activeOpp.selectedCards.length < label.cardLimit) {
-      S.activeOpp.selectedCards.push(handIdx);
-    }
-    render();
-  }
-}
-
-function confirmOpp() {
-  if (!S.activeOpp || S.activeOpp.selectedCards.length === 0) return;
-  const label = S.labelInventory.find(l => l.id === S.activeOpp.labelId);
-  const cardValues = S.activeOpp.selectedCards.map(i => S.hand[i].value);
-  const score = calcLabelScore(label.rule, cardValues);
-  S.opportunities[S.activeOpp.slot] = {
-    type: 'label',
-    labelName: label.name,
-    cards: S.activeOpp.selectedCards.map(i => S.hand[i]),
-    score
-  };
-  S.activeOpp.selectedCards.forEach(i => S.usedCardIds.add(S.hand[i].id));
-  S.activeOpp = null;
-  checkPhaseComplete();
-}
-
-function cancelOpp() {
-  S.activeOpp = null;
-  render();
-}
-
-function checkPhaseComplete() {
-  if (S.opportunities.every(o => o !== null)) {
-    const phaseScore = S.opportunities.reduce((sum, o) => sum + o.score, 0);
-    S.phaseScores[S.phase] = phaseScore;
-    S.turnScore += phaseScore;
-    const unused = S.hand.filter(c => !S.usedCardIds.has(c.id));
-    S.pool.push(...unused);
-    shuffle(S.pool);
-    if (S.phase < 2) {
-      S.phase++;
-      startPhase();
-      render();
+  if (assignment) {
+    // Card is already assigned — remove it from wherever it is
+    if (assignment.type === 'label') {
+      const arr = S.labelGroups[assignment.labelId];
+      arr.splice(arr.indexOf(handIdx), 1);
     } else {
-      endTurn();
+      S.singleCards.splice(S.singleCards.indexOf(handIdx), 1);
+    }
+    render();
+    return;
+  }
+
+  // Card is unassigned — assign it
+  if (S.activeLabelId !== null) {
+    const label = S.labelInventory.find(l => l.id === S.activeLabelId);
+    if (!S.labelGroups[S.activeLabelId]) S.labelGroups[S.activeLabelId] = [];
+    if (S.labelGroups[S.activeLabelId].length < label.cardLimit) {
+      S.labelGroups[S.activeLabelId].push(handIdx);
     }
   } else {
+    if (activeItemCount() < OPPS_PER_PHASE) {
+      S.singleCards.push(handIdx);
+    }
+  }
+  render();
+}
+
+function submitPhase() {
+  if (activeItemCount() !== OPPS_PER_PHASE) return;
+
+  // Calculate phase score from all items
+  let phaseScore = 0;
+  const usedHandIdxs = new Set();
+
+  // Label groups
+  for (const [labelId, handIdxs] of Object.entries(S.labelGroups)) {
+    if (handIdxs.length === 0) continue;
+    const label = S.labelInventory.find(l => l.id === Number(labelId));
+    const vals = handIdxs.map(i => S.hand[i].value);
+    phaseScore += calcLabelScore(label.rule, vals);
+    handIdxs.forEach(i => usedHandIdxs.add(i));
+  }
+
+  // Single cards
+  for (const handIdx of S.singleCards) {
+    phaseScore += S.hand[handIdx].value;
+    usedHandIdxs.add(handIdx);
+  }
+
+  S.phaseScores[S.phase] = phaseScore;
+  S.turnScore += phaseScore;
+
+  // Return unused hand cards to pool
+  const unused = S.hand.filter((_, i) => !usedHandIdxs.has(i));
+  S.pool.push(...unused);
+  shuffle(S.pool);
+
+  if (S.phase < 2) {
+    S.phase++;
+    startPhase();
     render();
+  } else {
+    endTurn();
   }
 }
 
@@ -694,85 +698,67 @@ function render() {
     }
   }
 
-  // Opportunity slots
-  const nextSlot   = S.opportunities.indexOf(null);
-  const inLabelMode = !!(S.activeOpp && S.activeOpp.type === 'label');
-
-  for (let i = 0; i < 3; i++) {
-    const slotEl    = document.getElementById(`os-${i}`);
-    const contentEl = document.getElementById(`oc-${i}`);
-    const scoreEl   = document.getElementById(`oscr-${i}`);
-    const opp       = S.opportunities[i];
-    const isActive  = S.activeOpp && S.activeOpp.slot === i;
-
-    slotEl.className = 'opp-slot' + (opp ? ' done' : (isActive ? ' active' : ''));
-
-    if (opp) {
-      if (opp.type === 'single') {
-        contentEl.innerHTML = `<span style="font-size:12px;color:var(--tx3)">단독 카드</span>&nbsp;&nbsp;<b>${opp.card.value}</b>`;
-      } else {
-        contentEl.innerHTML = `<span style="font-size:12px;color:var(--tx3)">${opp.labelName}</span>&nbsp;&nbsp;<b>${opp.cards.map(c => c.value).join(' + ')}</b>`;
-      }
-      scoreEl.textContent  = opp.score;
-      scoreEl.style.display = '';
-    } else if (isActive) {
-      const label   = S.labelInventory.find(l => l.id === S.activeOpp.labelId);
-      const selVals = S.activeOpp.selectedCards.map(idx => S.hand[idx].value);
-      const preview = selVals.length
-        ? calcLabelScore(label.rule, selVals)
-        : '?';
-      contentEl.innerHTML = `<span style="color:var(--blue)">${label.name}</span> — 카드 선택 중 → <b>${preview}</b>`;
-      scoreEl.style.display = 'none';
-    } else if (i === nextSlot) {
-      contentEl.textContent = '카드 또는 레이블 선택';
-      scoreEl.style.display = 'none';
-    } else {
-      contentEl.textContent = `득점 기회 ${i + 1}`;
-      scoreEl.style.display = 'none';
-    }
-  }
-
   // Label row
   const labelRow = document.getElementById('label-row');
   labelRow.innerHTML = '';
   S.labelInventory.forEach(label => {
-    const isSelected = inLabelMode && S.activeOpp.labelId === label.id;
-    const isDisabled = inLabelMode && !isSelected;
+    const groupCards = S.labelGroups[label.id] || [];
+    const isActive   = S.activeLabelId === label.id;
+    // "used once" = has ≥1 card AND not currently active
+    const usedOnce   = groupCards.length > 0 && !isActive;
     const el = document.createElement('div');
-    el.className = `label-chip${isSelected ? ' selected' : ''}${isDisabled ? ' disabled' : ''}`;
-    el.innerHTML = `${label.symbol} ${label.name} <span style="font-size:11px;opacity:0.7">(최대 ${label.cardLimit}장)</span>`;
-    if (!isDisabled) el.onclick = () => selectLabel(label.id);
+    el.className = `label-chip${isActive ? ' active' : ''}${usedOnce ? ' used-once' : ''}`;
+    const countText = groupCards.length > 0 ? `(${groupCards.length}장)` : `(최대 ${label.cardLimit}장)`;
+    el.innerHTML = `${label.symbol} ${label.name} <span class="chip-count">${countText}</span>`;
+    if (!usedOnce) el.onclick = () => selectLabel(label.id);
     labelRow.appendChild(el);
   });
 
-  // Hand label
-  if (inLabelMode) {
-    const label = S.labelInventory.find(l => l.id === S.activeOpp.labelId);
-    document.getElementById('hand-label').textContent = `패 — ${label.name} 카드 선택`;
-    document.getElementById('hand-count').textContent = `${S.activeOpp.selectedCards.length}/${label.cardLimit}`;
+  // Hand hint
+  if (S.activeLabelId !== null) {
+    const label = S.labelInventory.find(l => l.id === S.activeLabelId);
+    const groupCards = S.labelGroups[S.activeLabelId] || [];
+    document.getElementById('hand-label').textContent = `패 — ${label.name} 카드 지정`;
+    document.getElementById('hand-hint').textContent  = `${groupCards.length}/${label.cardLimit}`;
   } else {
-    document.getElementById('hand-label').textContent = '드로우된 패 — 클릭으로 단독 제출';
-    document.getElementById('hand-count').textContent = '';
+    document.getElementById('hand-label').textContent = '드로우된 패 — 클릭으로 단독 지정';
+    document.getElementById('hand-hint').textContent  = '';
   }
 
   // Hand cards
   const handRow = document.getElementById('hand-row');
   handRow.innerHTML = '';
   S.hand.forEach((card, i) => {
-    const isUsed     = S.usedCardIds.has(card.id);
-    const isSelected = inLabelMode && S.activeOpp.selectedCards.includes(i);
+    const asgn = cardAssignment(i);
     const el = document.createElement('div');
-    el.className = `card${isSelected ? ' selected' : ''}${isUsed ? ' used' : ''}`;
-    el.innerHTML = `<div class="card-val">${card.value}</div>`;
-    if (!isUsed) el.onclick = () => selectCardForOpp(i);
+
+    let badgeHtml = '';
+    if (asgn) {
+      if (asgn.type === 'label') {
+        const lbl = S.labelInventory.find(l => l.id === asgn.labelId);
+        badgeHtml = `<div class="card-badge label-badge">${lbl.symbol}</div>`;
+        el.className = 'card in-label';
+      } else {
+        badgeHtml = `<div class="card-badge single-badge">1</div>`;
+        el.className = 'card in-single';
+      }
+    } else {
+      el.className = 'card';
+    }
+
+    el.innerHTML = `${badgeHtml}<div class="card-val">${card.value}</div>`;
+    el.onclick = () => selectCard(i);
     handRow.appendChild(el);
   });
 
-  // Action row
-  const actionRow = document.getElementById('action-row');
-  actionRow.style.display = inLabelMode ? 'flex' : 'none';
-  document.getElementById('confirm-btn').disabled =
-    !inLabelMode || S.activeOpp.selectedCards.length === 0;
+  // Selection summary
+  const count = activeItemCount();
+  const countEl = document.getElementById('sel-count');
+  countEl.textContent = `${count} / ${OPPS_PER_PHASE}`;
+  countEl.className = `selection-bar-count${count === OPPS_PER_PHASE ? ' ready' : ''}`;
+
+  // Submit
+  document.getElementById('submit-btn').disabled = count !== OPPS_PER_PHASE;
 }
 
 function showResult(passed, cutline, goldEarned) {
