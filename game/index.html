@@ -344,14 +344,6 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
     </div>
   </div>
 
-  <div style="display:flex; gap:0; justify-content:center; align-items:center; font-size:12px; color:var(--tx3)">
-    <span id="cl-t1" style="flex:1;text-align:center"></span>
-    <span style="color:var(--bd2)">·</span>
-    <span id="cl-t2" style="flex:1;text-align:center"></span>
-    <span style="color:var(--bd2)">·</span>
-    <span id="cl-t3" style="flex:1;text-align:center"></span>
-  </div>
-
   <div class="phase-row">
     <div class="phase-badge" id="pb-0">A<span class="ph-score" id="ps-0">—</span></div>
     <div class="phase-badge" id="pb-1">B<span class="ph-score" id="ps-1">—</span></div>
@@ -611,7 +603,7 @@ function selectCard(handIdx) {
 function submitPhase() {
   if (activeItemCount() === 0) return;
 
-  let phaseValue = 0, phaseMultiplier = 0;
+  let phaseScore = 0;
   const usedHandIdxs = new Set();
 
   for (const [labelId, handIdxs] of Object.entries(S.labelGroups)) {
@@ -619,18 +611,15 @@ function submitPhase() {
     const label = S.labelInventory.find(l => l.id === Number(labelId));
     const vals = handIdxs.map(i => S.hand[i].value);
     const r = calcLabelScore(label.rule, vals);
-    phaseValue += r.value;
-    phaseMultiplier += r.multiplier;
+    phaseScore += Math.floor(r.value * r.multiplier);
     handIdxs.forEach(i => usedHandIdxs.add(i));
   }
 
   for (const handIdx of S.singleCards) {
-    phaseValue += S.hand[handIdx].value;
-    phaseMultiplier += 1;
+    phaseScore += S.hand[handIdx].value;
     usedHandIdxs.add(handIdx);
   }
 
-  const phaseScore = Math.floor(phaseValue * phaseMultiplier);
   S.phaseScores[S.phase] = phaseScore;
   S.turnScore += phaseScore;
 
@@ -739,15 +728,6 @@ function render() {
   document.getElementById('st-cutline').textContent = cutline;
   document.getElementById('st-gold').textContent    = S.gold;
 
-  // Per-turn cutline row
-  const cls = CUTLINES[S.round];
-  ['t1', 't2', 't3'].forEach((k, i) => {
-    const el = document.getElementById(`cl-${k}`);
-    const active = S.turn - 1 === i;
-    el.textContent = `T${i + 1} ${cls[i]}`;
-    el.style.fontWeight = active ? '700' : '400';
-    el.style.color = active ? 'var(--tx1)' : 'var(--tx3)';
-  });
 
   // Phase badges
   for (let i = 0; i < 3; i++) {
@@ -841,16 +821,15 @@ function render() {
   const needed = OPPS_PER_PHASE - displayItems.length;
   for (let i = 0; i < needed; i++) displayItems.push({ type: 'empty' });
 
-  // Compute phase totals
-  let totalValue = 0, totalMult = 0;
-  displayItems.forEach(item => {
-    if (item.type === 'label') { totalValue += item.result.value; totalMult += item.result.multiplier; }
-    else if (item.type === 'single') { totalValue += item.score; totalMult += 1; }
-  });
+  // Phase total (sum of per-item scores)
   const formulaEl = document.getElementById('submit-formula');
-  if (count > 0) {
-    const totalScore = Math.floor(totalValue * totalMult);
-    formulaEl.innerHTML = `<span style="color:var(--tx2)">${totalValue} × ${totalMult}</span> <span style="font-size:15px;font-weight:800;color:var(--tx1);margin-left:4px">= ${totalScore}</span>`;
+  const filledItems = displayItems.filter(i => i.type !== 'empty');
+  if (filledItems.length > 0) {
+    const total = filledItems.reduce((s, i) => s + i.score, 0);
+    const parts = filledItems.map(i => i.score).join(' + ');
+    formulaEl.innerHTML = filledItems.length > 1
+      ? `<span style="color:var(--tx2)">${parts} =</span> <span style="font-size:15px;font-weight:800;color:var(--tx1);margin-left:4px">${total}</span>`
+      : `<span style="font-size:15px;font-weight:800;color:var(--tx1)">${total}</span>`;
   } else {
     formulaEl.textContent = '—';
   }
