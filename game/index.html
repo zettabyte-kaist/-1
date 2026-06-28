@@ -446,14 +446,14 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
 // ─── CONSTANTS ───────────────────────────────────────────────
 const CUTLINES = [
   null,
-  [35, 35, 35],
-  [55, 55, 55],
-  [80, 80, 80],
-  [120, 120, 120],
-  [180, 180, 180],
-  [270, 270, 270],
-  [400, 400, 400],
-  [600, 600, 600]
+  [70,   70,   70],
+  [140,  140,  140],
+  [280,  280,  280],
+  [560,  560,  560],
+  [1100, 1100, 1100],
+  [2200, 2200, 2200],
+  [4400, 4400, 4400],
+  [8800, 8800, 8800]
 ];
 const MAX_ROUNDS     = 8;
 const DRAW_COUNT     = 7;
@@ -612,7 +612,7 @@ function submitPhase() {
     const vals = handIdxs.map(i => S.hand[i].value);
     const r = calcLabelScore(label.rule, vals);
     phaseValue += r.value;
-    phaseMultiplier *= r.multiplier;
+    phaseMultiplier += (r.multiplier - 1);
     handIdxs.forEach(i => usedHandIdxs.add(i));
   }
 
@@ -826,7 +826,7 @@ function render() {
   const filledItems = displayItems.filter(i => i.type !== 'empty');
   if (filledItems.length > 0) {
     const totalValue = filledItems.reduce((s, i) => s + i.value, 0);
-    const totalMult  = filledItems.reduce((p, i) => p * i.itemMult, 1);
+    const totalMult  = filledItems.reduce((s, i) => s + (i.itemMult - 1), 1);
     const totalScore = Math.floor(totalValue * totalMult);
     const multStr = totalMult !== 1 ? ` × ${totalMult}` : '';
     formulaEl.innerHTML = `<span style="color:var(--tx2)">${totalValue}${multStr} =</span> <span style="font-size:15px;font-weight:800;color:var(--tx1);margin-left:4px">${totalScore}</span>`;
