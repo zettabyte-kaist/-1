@@ -446,14 +446,14 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
 // ─── CONSTANTS ───────────────────────────────────────────────
 const CUTLINES = [
   null,
-  [35, 35, 25],
-  [55, 55, 40],
-  [80, 80, 60],
-  [120, 120, 90],
-  [180, 180, 135],
-  [270, 270, 200],
-  [400, 400, 300],
-  [600, 600, 450]
+  [35, 35, 35],
+  [55, 55, 55],
+  [80, 80, 80],
+  [120, 120, 120],
+  [180, 180, 180],
+  [270, 270, 270],
+  [400, 400, 400],
+  [600, 600, 600]
 ];
 const MAX_ROUNDS     = 8;
 const DRAW_COUNT     = 7;
@@ -603,7 +603,7 @@ function selectCard(handIdx) {
 function submitPhase() {
   if (activeItemCount() === 0) return;
 
-  let phaseScore = 0;
+  let phaseValue = 0, phaseMultiplier = 1;
   const usedHandIdxs = new Set();
 
   for (const [labelId, handIdxs] of Object.entries(S.labelGroups)) {
@@ -611,16 +611,17 @@ function submitPhase() {
     const label = S.labelInventory.find(l => l.id === Number(labelId));
     const vals = handIdxs.map(i => S.hand[i].value);
     const r = calcLabelScore(label.rule, vals);
-    phaseScore += Math.floor(r.value * r.multiplier);
+    phaseValue += r.value;
+    phaseMultiplier *= r.multiplier;
     handIdxs.forEach(i => usedHandIdxs.add(i));
   }
 
   for (const handIdx of S.singleCards) {
-    phaseScore += S.hand[handIdx].value;
+    phaseValue += S.hand[handIdx].value;
     usedHandIdxs.add(handIdx);
   }
 
-  S.phaseScores[S.phase] = phaseScore;
+  S.phaseScores[S.phase] = Math.floor(phaseValue * phaseMultiplier);
   S.turnScore += phaseScore;
 
   // Return unused hand cards to pool
@@ -810,26 +811,25 @@ function render() {
     if (cards && cards.length > 0) {
       const vals = cards.map(i => S.hand[i].value);
       const result = calcLabelScore(label.rule, vals);
-      const score = Math.floor(result.value * result.multiplier);
-      displayItems.push({ type: 'label', label, vals, result, score });
+      displayItems.push({ type: 'label', label, vals, value: result.value, itemMult: result.multiplier });
     }
   }
   for (const handIdx of S.singleCards) {
     const card = S.hand[handIdx];
-    displayItems.push({ type: 'single', card, score: card.value });
+    displayItems.push({ type: 'single', card, value: card.value, itemMult: 1 });
   }
   const needed = OPPS_PER_PHASE - displayItems.length;
   for (let i = 0; i < needed; i++) displayItems.push({ type: 'empty' });
 
-  // Phase total (sum of per-item scores)
+  // Phase total: sum values, product multipliers
   const formulaEl = document.getElementById('submit-formula');
   const filledItems = displayItems.filter(i => i.type !== 'empty');
   if (filledItems.length > 0) {
-    const total = filledItems.reduce((s, i) => s + i.score, 0);
-    const parts = filledItems.map(i => i.score).join(' + ');
-    formulaEl.innerHTML = filledItems.length > 1
-      ? `<span style="color:var(--tx2)">${parts} =</span> <span style="font-size:15px;font-weight:800;color:var(--tx1);margin-left:4px">${total}</span>`
-      : `<span style="font-size:15px;font-weight:800;color:var(--tx1)">${total}</span>`;
+    const totalValue = filledItems.reduce((s, i) => s + i.value, 0);
+    const totalMult  = filledItems.reduce((p, i) => p * i.itemMult, 1);
+    const totalScore = Math.floor(totalValue * totalMult);
+    const multStr = totalMult !== 1 ? ` × ${totalMult}` : '';
+    formulaEl.innerHTML = `<span style="color:var(--tx2)">${totalValue}${multStr} =</span> <span style="font-size:15px;font-weight:800;color:var(--tx1);margin-left:4px">${totalScore}</span>`;
   } else {
     formulaEl.textContent = '—';
   }
@@ -838,18 +838,18 @@ function render() {
     const row = document.createElement('div');
     row.className = `submit-item${item.type === 'empty' ? ' empty' : ''}`;
     if (item.type === 'label') {
-      const multBadge = item.result.multiplier > 1
-        ? `<span style="font-size:11px;color:var(--blue);font-weight:700;margin-left:6px">×${item.result.multiplier}</span>`
+      const multBadge = item.itemMult > 1
+        ? `<span style="font-size:11px;color:var(--blue);font-weight:700;margin-left:6px">×${item.itemMult}</span>`
         : '';
       row.innerHTML = `
         <div class="submit-item-tag label-tag">${item.label.symbol} ${item.label.name}</div>
         <div class="submit-item-cards">${item.vals.join(' + ')}${multBadge}</div>
-        <div class="submit-item-score">${item.score}</div>`;
+        <div class="submit-item-score">${item.value}</div>`;
     } else if (item.type === 'single') {
       row.innerHTML = `
         <div class="submit-item-tag single-tag">단독</div>
         <div class="submit-item-cards">${item.card.value}</div>
-        <div class="submit-item-score">${item.score}</div>`;
+        <div class="submit-item-score">${item.value}</div>`;
     } else {
       row.innerHTML = `
         <div class="submit-item-tag empty-tag">빈 슬롯</div>
