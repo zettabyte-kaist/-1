@@ -344,6 +344,14 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
     </div>
   </div>
 
+  <div style="display:flex; font-size:12px; color:var(--tx3); text-align:center;">
+    <span id="cl-t1" style="flex:1"></span>
+    <span style="color:var(--bd2); padding:0 4px">·</span>
+    <span id="cl-t2" style="flex:1"></span>
+    <span style="color:var(--bd2); padding:0 4px">·</span>
+    <span id="cl-t3" style="flex:1"></span>
+  </div>
+
   <div class="phase-row">
     <div class="phase-badge" id="pb-0">A<span class="ph-score" id="ps-0">—</span></div>
     <div class="phase-badge" id="pb-1">B<span class="ph-score" id="ps-1">—</span></div>
@@ -621,7 +629,8 @@ function submitPhase() {
     usedHandIdxs.add(handIdx);
   }
 
-  S.phaseScores[S.phase] = Math.floor(phaseValue * phaseMultiplier);
+  const phaseScore = Math.floor(phaseValue * phaseMultiplier);
+  S.phaseScores[S.phase] = phaseScore;
   S.turnScore += phaseScore;
 
   // Return unused hand cards to pool
@@ -729,6 +738,15 @@ function render() {
   document.getElementById('st-cutline').textContent = cutline;
   document.getElementById('st-gold').textContent    = S.gold;
 
+
+  // Per-turn cutline row
+  CUTLINES[S.round].forEach((cl, i) => {
+    const el = document.getElementById(`cl-t${i + 1}`);
+    const active = S.turn - 1 === i;
+    el.textContent = `T${i + 1} ${cl}`;
+    el.style.fontWeight = active ? '700' : '400';
+    el.style.color = active ? 'var(--tx1)' : 'var(--tx3)';
+  });
 
   // Phase badges
   for (let i = 0; i < 3; i++) {
