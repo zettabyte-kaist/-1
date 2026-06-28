@@ -402,7 +402,11 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
       <div class="overlay-title">상점</div>
       <div class="gold-badge">💰 <span id="shop-gold-val">0</span>G</div>
     </div>
-    <div class="overlay-sub">카드를 구매해 덱을 강화하세요.</div>
+    <div class="overlay-sub">카드와 레이블을 구매해 덱을 강화하세요.</div>
+    <div>
+      <div style="font-size:11px; color:var(--tx3); margin-bottom:8px">레이블 구매</div>
+      <div class="shop-item-row" id="shop-labels"></div>
+    </div>
     <div>
       <div style="font-size:11px; color:var(--tx3); margin-bottom:8px">카드 구매</div>
       <div class="shop-item-row" id="shop-items"></div>
@@ -455,6 +459,12 @@ const INITIAL_LABELS = [
   { id: 0, name: '더하기', rule: 'sum', cardLimit: 3, symbol: '+' }
 ];
 
+const LABEL_POOL = [
+  { id: 1, name: '최댓값',    rule: 'max',      cardLimit: 3, symbol: '▲', price: 3 },
+  { id: 2, name: '홀수 더하기', rule: 'odd-sum',  cardLimit: 3, symbol: '홀', price: 3 },
+  { id: 3, name: '짝수 더하기', rule: 'even-sum', cardLimit: 3, symbol: '짝', price: 3 },
+];
+
 // ─── HELPERS ─────────────────────────────────────────────────
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
@@ -475,8 +485,19 @@ function buildInitialDeck() {
 }
 
 function calcLabelScore(rule, cardValues) {
-  if (rule === 'sum') return cardValues.reduce((a, b) => a + b, 0);
-  return 0;
+  if (rule === 'sum') return { value: cardValues.reduce((a, b) => a + b, 0), multiplier: 1 };
+  if (rule === 'max') return { value: cardValues.length ? Math.max(...cardValues) : 0, multiplier: 1 };
+  if (rule === 'odd-sum') {
+    const value = cardValues.reduce((a, b) => a + b, 0);
+    const oddCount = cardValues.filter(v => v % 2 !== 0).length;
+    return { value, multiplier: 1 + oddCount * 0.5 };
+  }
+  if (rule === 'even-sum') {
+    const value = cardValues.reduce((a, b) => a + b, 0);
+    const evenCount = cardValues.filter(v => v % 2 === 0).length;
+    return { value, multiplier: 1 + evenCount * 0.5 };
+  }
+  return { value: 0, multiplier: 1 };
 }
 
 // ─── STATE ───────────────────────────────────────────────────
@@ -494,8 +515,9 @@ function initState() {
     activeLabelId: null, // which label chip is currently active
     phaseScores: [null, null, null],
     turnScore: 0,
-    gold: 10,
+    gold: 0,
     shopItems: [],
+    shopLabels: [],
     lastPassed: false,
     nextCardId: 20,
     nextLabelId: 1
@@ -586,7 +608,8 @@ function submitPhase() {
     if (handIdxs.length === 0) continue;
     const label = S.labelInventory.find(l => l.id === Number(labelId));
     const vals = handIdxs.map(i => S.hand[i].value);
-    phaseScore += calcLabelScore(label.rule, vals);
+    const r = calcLabelScore(label.rule, vals);
+    phaseScore += Math.floor(r.value * r.multiplier);
     handIdxs.forEach(i => usedHandIdxs.add(i));
   }
 
@@ -620,7 +643,7 @@ function endTurn() {
 
   let goldEarned = 0;
   if (passed) {
-    goldEarned = Math.max(5, Math.floor(S.turnScore / 8));
+    goldEarned = S.turn === 3 ? 10 : 5;
     S.gold += goldEarned;
     generateShop();
   }
@@ -653,18 +676,21 @@ function closeShop() {
 
 // ─── SHOP ────────────────────────────────────────────────────
 const SHOP_POOL = [
-  { value: 3, price: 5 },
-  { value: 4, price: 5 },
-  { value: 5, price: 8 },
-  { value: 6, price: 8 },
-  { value: 7, price: 8 },
-  { value: 8, price: 15 },
-  { value: 9, price: 15 },
+  { value: 3, price: 1 },
+  { value: 4, price: 1 },
+  { value: 5, price: 1 },
+  { value: 6, price: 1 },
+  { value: 7, price: 1 },
+  { value: 8, price: 1 },
+  { value: 9, price: 1 },
 ];
 
 function generateShop() {
   const pool = shuffle([...SHOP_POOL]);
   S.shopItems = pool.slice(0, 3).map(item => ({ ...item, sold: false }));
+  const ownedIds = new Set(S.labelInventory.map(l => l.id));
+  const available = shuffle(LABEL_POOL.filter(l => !ownedIds.has(l.id)));
+  S.shopLabels = available.slice(0, 3).map(l => ({ ...l, sold: false }));
 }
 
 function buyItem(idx) {
@@ -673,6 +699,15 @@ function buyItem(idx) {
   S.gold -= item.price;
   item.sold = true;
   S.deck.push({ id: S.nextCardId++, value: item.value });
+  renderShop();
+}
+
+function buyLabel(idx) {
+  const item = S.shopLabels[idx];
+  if (!item || item.sold || S.gold < item.price) return;
+  S.gold -= item.price;
+  item.sold = true;
+  S.labelInventory.push({ id: item.id, name: item.name, rule: item.rule, cardLimit: item.cardLimit, symbol: item.symbol });
   renderShop();
 }
 
@@ -772,7 +807,9 @@ function render() {
     const cards = S.labelGroups[label.id];
     if (cards && cards.length > 0) {
       const vals = cards.map(i => S.hand[i].value);
-      displayItems.push({ type: 'label', label, vals, score: calcLabelScore(label.rule, vals) });
+      const result = calcLabelScore(label.rule, vals);
+      const score = Math.floor(result.value * result.multiplier);
+      displayItems.push({ type: 'label', label, vals, result, score });
     }
   }
   for (const handIdx of S.singleCards) {
@@ -786,9 +823,12 @@ function render() {
     const row = document.createElement('div');
     row.className = `submit-item${item.type === 'empty' ? ' empty' : ''}`;
     if (item.type === 'label') {
+      const multBadge = item.result.multiplier > 1
+        ? `<span style="font-size:11px;color:var(--blue);font-weight:700;margin-left:6px">×${item.result.multiplier}</span>`
+        : '';
       row.innerHTML = `
         <div class="submit-item-tag label-tag">${item.label.symbol} ${item.label.name}</div>
-        <div class="submit-item-cards">${item.vals.join(' + ')}</div>
+        <div class="submit-item-cards">${item.vals.join(' + ')}${multBadge}</div>
         <div class="submit-item-score">${item.score}</div>`;
     } else if (item.type === 'single') {
       row.innerHTML = `
@@ -832,6 +872,25 @@ function openShop() {
 
 function renderShop() {
   document.getElementById('shop-gold-val').textContent = S.gold;
+
+  const labelsEl = document.getElementById('shop-labels');
+  labelsEl.innerHTML = '';
+  if (S.shopLabels.length === 0) {
+    labelsEl.innerHTML = '<div style="font-size:12px;color:var(--tx3);padding:4px 0">구매 가능한 레이블 없음</div>';
+  } else {
+    S.shopLabels.forEach((item, i) => {
+      const el = document.createElement('div');
+      const cantAfford = !item.sold && S.gold < item.price;
+      el.className = `shop-item${item.sold ? ' sold' : ''}${cantAfford ? ' cant' : ''}`;
+      el.innerHTML = `
+        <div class="shop-item-val">${item.symbol}</div>
+        <div class="shop-item-name">${item.sold ? '보유 중' : item.name}</div>
+        <div class="shop-item-price">${item.sold ? '—' : item.price + 'G'}</div>`;
+      if (!item.sold && !cantAfford) el.onclick = () => buyLabel(i);
+      labelsEl.appendChild(el);
+    });
+  }
+
   const itemsEl = document.getElementById('shop-items');
   itemsEl.innerHTML = '';
   S.shopItems.forEach((item, i) => {
