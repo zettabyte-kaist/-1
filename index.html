@@ -414,28 +414,22 @@ body.dark .gold-badge { background: #2e200a; border-color: #9a6e1a; color: #d4a8
       <div class="overlay-title">상점</div>
       <div class="gold-badge">💰 <span id="shop-gold-val">0</span>G</div>
     </div>
-    <div class="overlay-sub">카드와 레이블을 구매해 덱을 강화하세요.</div>
+    <div style="display:flex; align-items:center; justify-content:space-between">
+      <div class="overlay-sub" style="margin:0">카드와 레이블을 구매해 덱을 강화하세요.</div>
+      <button class="btn" id="reroll-btn" onclick="rerollShop()" style="font-size:12px; padding:6px 12px; flex-shrink:0; margin-left:8px"></button>
+    </div>
     <div>
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px">
-        <span style="font-size:11px; color:var(--tx3)">공리 구매 (준비 중)</span>
-        <button class="btn" id="reroll-axiom-btn" disabled style="font-size:11px; padding:4px 10px">리롤 —</button>
-      </div>
+      <div style="font-size:11px; color:var(--tx3); margin-bottom:8px">공리 구매 (준비 중)</div>
       <div style="font-size:12px; color:var(--tx3); padding:10px 0; text-align:center; border:0.5px dashed var(--bd3); border-radius:var(--rl)">
         공리 시스템은 아직 구현되지 않았습니다
       </div>
     </div>
     <div>
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px">
-        <span style="font-size:11px; color:var(--tx3)">레이블 구매</span>
-        <button class="btn" id="reroll-label-btn" onclick="rerollLabels()" style="font-size:11px; padding:4px 10px"></button>
-      </div>
+      <div style="font-size:11px; color:var(--tx3); margin-bottom:8px">레이블 구매</div>
       <div class="shop-item-row" id="shop-labels"></div>
     </div>
     <div>
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px">
-        <span style="font-size:11px; color:var(--tx3)">카드 구매</span>
-        <button class="btn" id="reroll-card-btn" onclick="rerollCards()" style="font-size:11px; padding:4px 10px"></button>
-      </div>
+      <div style="font-size:11px; color:var(--tx3); margin-bottom:8px">카드 구매</div>
       <div class="shop-item-row" id="shop-items"></div>
     </div>
     <div>
@@ -545,7 +539,7 @@ function initState() {
     gold: 0,
     shopItems: [],
     shopLabels: [],
-    rerollPrices: { card: 3, label: 3, axiom: 3 },
+    rerollPrice: 3,
     lastPassed: false,
     nextCardId: 20,
     nextLabelId: 1
@@ -718,24 +712,16 @@ function generateShop() {
   const ownedIds = new Set(S.labelInventory.map(l => l.id));
   const available = shuffle(LABEL_POOL.filter(l => !ownedIds.has(l.id)));
   S.shopLabels = available.slice(0, 3).map(l => ({ ...l, sold: false }));
-  S.rerollPrices = { card: 3, label: 3, axiom: 3 };
+  S.rerollPrice = 3;
 }
 
-function rerollCards() {
-  const price = S.rerollPrices.card;
+function rerollShop() {
+  const price = S.rerollPrice;
   if (S.gold < price) return;
   S.gold -= price;
-  S.rerollPrices.card++;
+  S.rerollPrice++;
   const pool = shuffle([...SHOP_POOL]);
   S.shopItems = pool.slice(0, 3).map(item => ({ ...item, sold: false }));
-  renderShop();
-}
-
-function rerollLabels() {
-  const price = S.rerollPrices.label;
-  if (S.gold < price) return;
-  S.gold -= price;
-  S.rerollPrices.label++;
   const ownedIds = new Set(S.labelInventory.map(l => l.id));
   const available = shuffle(LABEL_POOL.filter(l => !ownedIds.has(l.id)));
   S.shopLabels = available.slice(0, 3).map(l => ({ ...l, sold: false }));
@@ -944,13 +930,9 @@ function openShop() {
 function renderShop() {
   document.getElementById('shop-gold-val').textContent = S.gold;
 
-  const cardBtn  = document.getElementById('reroll-card-btn');
-  cardBtn.textContent = `리롤 ${S.rerollPrices.card}G`;
-  cardBtn.disabled = S.gold < S.rerollPrices.card;
-
-  const labelBtn = document.getElementById('reroll-label-btn');
-  labelBtn.textContent = `리롤 ${S.rerollPrices.label}G`;
-  labelBtn.disabled = S.gold < S.rerollPrices.label;
+  const rerollBtn = document.getElementById('reroll-btn');
+  rerollBtn.textContent = `🎲 리롤 ${S.rerollPrice}G`;
+  rerollBtn.disabled = S.gold < S.rerollPrice;
 
   const labelsEl = document.getElementById('shop-labels');
   labelsEl.innerHTML = '';
